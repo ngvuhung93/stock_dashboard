@@ -422,21 +422,6 @@ tr:last-child td { border-bottom: none; }
 .val-above { color: var(--red); font-weight: 600; }
 .val-neutral { color: var(--muted); font-weight: 600; }
 
-/* ================= Assessment ================= */
-#assessmentCard p { font-size: 14.5px; margin-bottom: 10px; }
-#assessmentCard .assess-badge { margin-bottom: 14px; }
-.disclaimer {
-  font-size: 12px !important; color: var(--muted) !important;
-  border-top: 1px solid var(--border-soft); padding-top: 12px; margin-top: 14px !important;
-}
-.score-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 4px; }
-.score-chip {
-  font-size: 12.5px; font-weight: 700; padding: 5px 12px; border-radius: 999px;
-}
-.score-chip.green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
-.score-chip.red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
-.score-chip.amber { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
-
 footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 16px 30px; }
 
 @media (max-width: 640px) {
@@ -593,8 +578,6 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
       </div>
       <p class="table-note" id="tableNote"></p>
     </section>
-
-    <section class="card" id="assessmentCard" aria-label="Valuation assessment"></section>
   </div>
 
   <div id="loading" class="loading hidden">
@@ -829,14 +812,6 @@ function relText(reference, current) {
   if (c.type === "discount") return { text: fmtAbsPct(c.difference) + " discount", cls: "below" };
   if (c.type === "premium") return { text: fmtAbsPct(c.difference) + " premium", cls: "above" };
   return { text: "≈ in line", cls: "neutral" };
-}
-
-/* Full sentence: "P/E is 33.2% below the historical average". */
-function vsSentence(subject, refLabel, current, reference) {
-  const c = classifyValuation(current, reference);
-  if (c.type === "discount") return subject + " is " + fmtAbsPct(c.difference) + " below the historical " + refLabel;
-  if (c.type === "premium") return subject + " is " + fmtAbsPct(c.difference) + " above the historical " + refLabel;
-  return subject + " is approximately in line with the historical " + refLabel;
 }
 
 /* Single status for one metric, preferring the median as reference. */
@@ -2399,39 +2374,6 @@ function renderTable(an) {
     ex.negative + " negative and " + ex.extreme + " extreme P/E; " + exb.negative + " negative P/B.";
 }
 
-/* -------------------- Assessment -------------------- */
-function renderAssessment(an) {
-  const el = document.getElementById("assessmentCard");
-  const a = an.assessment;
-  let html = '<div class="section-title">Valuation Assessment</div>' +
-    '<span class="assess-badge tone-' + a.tone + '">' + a.label + "</span>";
-  if (an.insufficient) {
-    html += "<p>Insufficient historical data to produce a reliable valuation assessment. " +
-      "Valid observations: " + an.pe.stats.count + " P/E and " + an.pb.stats.count +
-      " P/B (minimum " + MIN_OBSERVATIONS + " required).</p>";
-  } else {
-    const name = an.name || an.ticker;
-    html += "<p>" + vsSentence(name + " P/E", "average", an.pe.current, an.pe.stats.mean) +
-      " and " + vsSentence("P/E", "median", an.pe.current, an.pe.stats.median) + ".</p>";
-    html += "<p>" + vsSentence(name + " P/B", "average", an.pb.current, an.pb.stats.mean) +
-      " and " + vsSentence("P/B", "median", an.pb.current, an.pb.stats.median) + ".</p>";
-    const chip = (label, s) => '<span class="score-chip ' + toneOfStatus(s) + '">' +
-      label + " → " + s.status + "</span>";
-    html += '<div class="score-row">' + chip("P/E vs median", a.peStatus) +
-      chip("P/B vs median", a.pbStatus) +
-      '<span class="score-chip amber">Score ' + (a.score > 0 ? "+" : "") + a.score + "</span></div>";
-    const pctText = (isFinite(an.pe.stats.percentile) && isFinite(an.pb.stats.percentile))
-      ? "On the " + an.periodLabel.toLowerCase() + " window, P/E sits at the <b>" +
-        Math.round(an.pe.stats.percentile) + "th</b> percentile and P/B at the <b>" +
-        Math.round(an.pb.stats.percentile) + "th</b> percentile of their historical distributions."
-      : "";
-    if (pctText) html += "<p>" + pctText + "</p>";
-  }
-  html += '<p class="disclaimer">Historical valuation comparison only — this is not investment advice and ' +
-    "does not account for fundamentals, growth or macro conditions.</p>";
-  el.innerHTML = html;
-}
-
 /* -------------------- Charts (Chart.js) -------------------- */
 function cssVar(n) {
   return getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -2601,7 +2543,6 @@ function renderAll(an, data) {
   renderGauges(an);
   renderRanges(an);
   renderTable(an);
-  renderAssessment(an);
   renderCharts(an);
   document.getElementById("content").classList.remove("hidden");
 }
