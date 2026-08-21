@@ -3,7 +3,10 @@
 ## What this repo is
 
 - The entire deliverable is `stock_dashboard.html`: a single-file Vietnam stock dashboard (valuation, dividends, fundamentals). No build system, no package.json, no in-repo tests, no CI.
-- All app code lives in ONE inline `<script>` block (the other `<script>` is the Chart.js 4.4.1 CDN tag). CSS is inline in `<style>`. File must stay UTF-8 **without BOM**; UI text is Vietnamese — never re-encode or "fix" characters (em-dashes `—` are intentional; mojibake like `Ã` means you broke encoding).
+- Rename history: created as `index.html`, user-renamed to `pepb_dashboard.html`, then to `stock_dashboard.html`. Old harness/test files in `%TEMP%` may reference the old names.
+- `stock-dashboard.json` at the root is an exported OpenCode chat-session log (~6 MB), not app data or config — do not treat it as a data source or edit it.
+- Scope: works for individual stocks AND index tickers (`INDEX_TICKERS`: VNINDEX, VN30, HNXINDEX, ...). The dashboard adapts by sector: banks (detected via `BANK_TICKERS` set fallback) get ROE/NIM/NPL/leverage charts and must NOT show ROIC/FCF/OCF/D/E/Capex; non-banks get the reverse set (ROIC, Adjusted FCF, OCF, Capex, D/E; no NIM/NPL). All fundamental charts share ONE Quarterly/Yearly toggle (default Yearly).
+- All app code lives in ONE inline `<script>` block (the other `<script src=...>` is the Chart.js 4.4.1 CDN tag). CSS is inline in `<style>`. File must stay UTF-8 **without BOM**; UI text is Vietnamese — never re-encode or "fix" characters (em-dashes `—` are intentional; mojibake like `Ã` means you broke encoding).
 
 ## How to verify changes (no test runner exists — recreate the harness)
 
@@ -17,7 +20,7 @@ The HTML cannot be executed directly under node. Workflow used by prior sessions
    node --check vnval_app.js
    ```
 2. Unit tests = concat `vnval_app.js` + a test file, run with node. Suites assert via `PASS:`/`FAIL:` lines; count with `Select-String`. Two suites existed: fundamentals (~153 tests) and legacy valuation (~69), plus a DOM-stub render smoke test and a live E2E check that hits the real APIs.
-3. Structural checks after edits: exactly 2 `<script>`/`</script>` pairs, 1 `<body>`, no BOM, no mojibake.
+3. Structural checks after edits: exactly 2 `<script`/`</script>` tags (count the prefix `<script`, NOT the literal `<script>` — the CDN tag has attributes so the literal matches only once), 1 `<body>`, no BOM, no mojibake.
 4. The script ends with `if (typeof document !== "undefined") initApp();` so node can load it — keep that guard.
 
 Node-harness gotchas: append test code INSIDE the same `eval(code + ...)` string (top-level functions declared by eval are not visible outside it); the Chart stub signature is `(canvas, config)`; stub `document`, `localStorage`, `getComputedStyle`, `window.matchMedia`, and `fetch`.
@@ -29,6 +32,8 @@ Node-harness gotchas: append test code INSIDE the same `eval(code + ...)` string
 - cafef v1 endpoints are intermittently very slow (504s, >30s hangs). `fetchCafefReport` has a 15s timeout + 3 attempts with backoff, and statements are fetched with `Promise.allSettled` so one flaky endpoint doesn't kill the rest (cash flow and quarterly data are optional/partial-tolerant). Do NOT regress this to plain `Promise.all`.
 - Never fabricate live values. If a feed fails, degrade gracefully (`fundUnavailable` message, demo fallback labeled via `isDemo`/`fallbackReason`/demo badge). `USE_LIVE_DATA = false` forces the synthetic mock provider.
 - cafef zero-fills the parent profit line (26) for older periods → bank ROE falls back to line 21 and drops rows where both are 0. Don't "simplify" this away.
+- Cash flow lines (cafef): HDKD_20 = OCF, HDDT_22 = capex, HDDT_28 = "interest, dividends and profit received". Associate/JV dividends come from HDDT_28 and are treated as NOT already in OCF (per-ticker override: `ASSOCIATE_DIVS_IN_OCF_OVERRIDES`), so Adjusted FCF = OCF − Capex + that amount — never double-count.
+- Dividend history must keep cash dividends and stock dividends strictly separate (never convert stock % into VND or count it as cash).
 
 ## Domain logic invariants
 
