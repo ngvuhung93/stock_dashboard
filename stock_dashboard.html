@@ -1,0 +1,2737 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vietnam Stock Dashboard — Valuation, Dividends &amp; Fundamentals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+/* ================= Design tokens ================= */
+:root {
+  --bg: #0a0f1e;
+  --bg-glow: radial-gradient(1200px 500px at 20% -10%, rgba(79, 141, 255, 0.10), transparent 60%);
+  --card: #111a2c;
+  --card-2: #0e1626;
+  --border: #1f2b45;
+  --border-soft: #1a2540;
+  --text: #e6edf7;
+  --muted: #93a4c0;
+  --faint: #5c6d8f;
+  --accent: #4f8dff;
+  --accent-2: #22d3ee;
+  --green: #2ecc71;
+  --green-bg: rgba(46, 204, 113, 0.12);
+  --green-border: rgba(46, 204, 113, 0.40);
+  --red: #f87171;
+  --red-bg: rgba(248, 113, 113, 0.12);
+  --red-border: rgba(248, 113, 113, 0.40);
+  --amber: #fbbf24;
+  --amber-bg: rgba(251, 191, 36, 0.10);
+  --amber-border: rgba(251, 191, 36, 0.40);
+  --orange: #fb923c;
+  --orange-bg: rgba(251, 146, 60, 0.13);
+  --chart-line: #5b9cff;
+  --chart-avg: #8b9bb4;
+  --chart-med: #fbbf24;
+  --chart-cur: #2ecc71;
+  --chart-grid: #1a2540;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.25);
+  --header-grad: linear-gradient(135deg, #0b1730 0%, #12264b 55%, #0d3560 100%);
+  --radius: 14px;
+  --font: "Inter", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --overlay: rgba(4, 8, 18, 0.55);
+}
+html[data-theme="light"] {
+  --bg: #eef2f8;
+  --bg-glow: radial-gradient(1000px 420px at 20% -10%, rgba(37, 99, 235, 0.08), transparent 60%);
+  --card: #ffffff;
+  --card-2: #f8fafd;
+  --border: #dde4ee;
+  --border-soft: #e6ebf3;
+  --text: #0f172a;
+  --muted: #64748b;
+  --faint: #94a3b8;
+  --accent: #2563eb;
+  --accent-2: #0284c7;
+  --green: #059669;
+  --green-bg: #e6f6ef;
+  --green-border: rgba(5, 150, 105, 0.40);
+  --red: #dc2626;
+  --red-bg: #fdecec;
+  --red-border: rgba(220, 38, 38, 0.40);
+  --amber: #b45309;
+  --amber-bg: #fdf4e1;
+  --amber-border: rgba(180, 83, 9, 0.40);
+  --orange: #ea580c;
+  --orange-bg: #fdeee2;
+  --chart-line: #2563eb;
+  --chart-avg: #94a3b8;
+  --chart-med: #f59e0b;
+  --chart-cur: #059669;
+  --chart-grid: #e2e8f0;
+  --shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+  --shadow-sm: 0 1px 4px rgba(15, 23, 42, 0.06);
+  --header-grad: linear-gradient(135deg, #0f2a5c 0%, #1d4ed8 100%);
+  --overlay: rgba(15, 23, 42, 0.40);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+.hidden { display: none !important; }
+.num, .hm-value, .comp-current, table { font-variant-numeric: tabular-nums; }
+
+/* ================= Topbar ================= */
+.topbar {
+  background: var(--header-grad);
+  color: #fff;
+  padding: 18px 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  box-shadow: 0 2px 18px rgba(0, 0, 0, 0.25);
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand-mark {
+  width: 40px; height: 40px; border-radius: 11px;
+  background: linear-gradient(135deg, #4f8dff, #22d3ee);
+  color: #fff; font-weight: 800; font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 14px rgba(79, 141, 255, 0.4);
+}
+.topbar h1 { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; }
+.topbar .subtitle { font-size: 12.5px; opacity: 0.82; margin-top: 1px; }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.demo-badge {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff; padding: 4px 11px; border-radius: 999px; white-space: nowrap;
+}
+.demo-badge.live { background: rgba(46, 204, 113, 0.22); border-color: rgba(46, 204, 113, 0.6); }
+.demo-badge.demo { background: rgba(251, 191, 36, 0.22); border-color: rgba(251, 191, 36, 0.6); }
+.theme-btn {
+  font: inherit; font-size: 13px; font-weight: 600;
+  background: rgba(255, 255, 255, 0.13); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  padding: 6px 14px; border-radius: 9px; cursor: pointer;
+  transition: background 0.2s ease;
+}
+.theme-btn:hover { background: rgba(255, 255, 255, 0.24); }
+
+main { max-width: 1240px; margin: 0 auto; padding: 22px 18px 44px; background: var(--bg-glow); }
+
+/* ================= Cards & controls ================= */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+  margin-bottom: 18px;
+}
+.controls { display: flex; flex-direction: column; gap: 14px; }
+.control-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.mode-switch { display: inline-flex; gap: 4px; background: var(--card-2); padding: 4px; border-radius: 10px; width: max-content; border: 1px solid var(--border-soft); }
+.pill {
+  font: inherit; font-size: 13px; font-weight: 600;
+  border: none; background: transparent; color: var(--muted);
+  padding: 7px 16px; border-radius: 8px; cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.pill.active { background: var(--card); color: var(--accent); box-shadow: var(--shadow-sm); }
+.seg { display: inline-flex; gap: 4px; background: var(--card-2); padding: 4px; border-radius: 10px; width: max-content; border: 1px solid var(--border-soft); }
+.seg-btn {
+  font: inherit; font-size: 12.5px; font-weight: 700;
+  border: none; background: transparent; color: var(--muted);
+  padding: 6px 15px; border-radius: 8px; cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.seg-btn.active { background: var(--card); color: var(--accent); box-shadow: var(--shadow-sm); }
+.control-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.control-row input {
+  font: inherit; font-size: 15px; font-weight: 600; letter-spacing: 0.03em;
+  color: var(--text); background: var(--card-2);
+  border: 1px solid var(--border); border-radius: 9px;
+  padding: 10px 13px; flex: 0 1 240px; min-width: 150px;
+}
+.control-row input::placeholder { color: var(--faint); font-weight: 400; }
+.control-row input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+.control-row input.disabled { opacity: 0.55; }
+.btn-analyze {
+  font: inherit; font-size: 14px; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, var(--accent), #2563eb);
+  border: none; border-radius: 9px;
+  padding: 11px 22px; cursor: pointer;
+  transition: filter 0.2s ease, transform 0.1s ease;
+  box-shadow: 0 4px 14px rgba(79, 141, 255, 0.35);
+}
+.btn-analyze:hover:not(:disabled) { filter: brightness(1.1); }
+.btn-analyze:active:not(:disabled) { transform: translateY(1px); }
+.btn-analyze:disabled { opacity: 0.6; cursor: not-allowed; }
+.suggestions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.chip {
+  font: inherit; font-size: 12px; font-weight: 600;
+  background: var(--card-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 4px 12px; cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ================= Alerts / loading ================= */
+.alert { padding: 12px 15px; border-radius: 10px; font-size: 14px; margin-bottom: 18px; border: 1px solid transparent; }
+.alert.error { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+.alert.warn { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); }
+.alert.info { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+.loading {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--overlay);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  color: #fff; font-weight: 600;
+  backdrop-filter: blur(2px);
+}
+.spinner {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff; animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ================= Hero summary ================= */
+.hero { position: relative; overflow: hidden; }
+.hero::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(600px 240px at 85% -20%, rgba(79, 141, 255, 0.10), transparent 60%);
+}
+.hero-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.hero-head h2 { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; }
+.ticker-pill {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+  color: var(--accent); background: var(--card-2);
+  border: 1px solid var(--border); padding: 3px 11px; border-radius: 7px;
+}
+.pill-info {
+  font-size: 11.5px; font-weight: 600; color: var(--muted);
+  background: var(--card-2); border: 1px solid var(--border-soft);
+  padding: 3px 10px; border-radius: 999px;
+}
+.hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.hero-metric {
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--card-2); padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 5px; position: relative;
+}
+.hm-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.hm-value { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.hm-value.hm-big { font-size: 27px; line-height: 1.2; }
+.hm-value .hm-unit { font-size: 20px; font-weight: 700; color: var(--muted); margin-left: 2px; }
+.hm-note { font-size: 12px; color: var(--muted); line-height: 1.45; }
+.hm-note strong { color: var(--text); font-weight: 700; }
+.hm-status {
+  position: absolute; top: 16px; right: 16px;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.08em;
+  padding: 5px 13px; border-radius: 999px;
+}
+.hm-status.green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.hm-status.red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+.hm-status.amber { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+.hm-vs { font-size: 13px; }
+.hm-vs.below { color: var(--green); }
+.hm-vs.above { color: var(--red); }
+.hm-vs.neutral { color: var(--muted); }
+.hero-overall {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  border-top: 1px solid var(--border-soft); padding-top: 16px;
+}
+.hero-overall-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.hero-sentence { font-size: 14px; flex: 1 1 100%; }
+.assess-badge {
+  display: inline-block; padding: 7px 16px; border-radius: 999px;
+  font-size: 13.5px; font-weight: 800; letter-spacing: 0.03em;
+}
+.assess-badge.tone-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.assess-badge.tone-amber { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+.assess-badge.tone-orange { background: var(--orange-bg); color: var(--orange); border: 1px solid var(--amber-border); }
+.assess-badge.tone-red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+.assess-badge.tone-gray { background: var(--card-2); color: var(--muted); border: 1px solid var(--border); }
+
+/* ================= Fundamentals ================= */
+.fund-headbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.fund-headbar .section-title { margin-bottom: 0; }
+.fund-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.fund-card {
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--card-2); padding: 15px 17px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.fund-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fund-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.fund-subtitle { font-size: 11px; font-weight: 600; color: var(--faint); margin-top: -4px; }
+.fund-value { font-size: 27px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; }
+.fund-value.na { font-size: 15px; font-weight: 700; color: var(--muted); line-height: 1.4; }
+.fund-chart { position: relative; height: 150px; margin-top: 4px; }
+.fund-insight { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.fund-insight b { color: var(--text); font-weight: 600; }
+.fund-unavail {
+  padding: 16px 18px; border: 1px dashed var(--border); border-radius: 10px;
+  color: var(--muted); font-size: 13.5px; line-height: 1.5;
+}
+.fund-unavail b { color: var(--text); }
+
+/* ================= Dividend history ================= */
+.div-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.div-sum-item {
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--card-2); padding: 13px 16px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.div-sum-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.div-sum-value { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.2; }
+.div-sum-note { font-size: 11.5px; color: var(--muted); }
+.div-sum-value.trend-up { color: var(--green); }
+.div-sum-value.trend-down { color: var(--red); }
+.div-sum-value.trend-flat { color: var(--muted); }
+.div-table-wrap { overflow-x: auto; margin-bottom: 18px; }
+.div-timeline { display: flex; flex-wrap: wrap; gap: 10px; }
+.div-tl-item {
+  flex: 1 1 150px; border: 1px solid var(--border-soft); border-radius: 10px;
+  background: var(--card-2); padding: 11px 14px;
+  display: flex; flex-direction: column; gap: 3px; position: relative;
+}
+.div-tl-item::before {
+  content: ""; position: absolute; left: -14px; top: 50%; width: 18px; height: 2px;
+  background: var(--border); display: none;
+}
+.div-tl-item:first-child::before { display: none; }
+.div-tl-year { font-size: 12px; font-weight: 800; color: var(--accent); letter-spacing: 0.04em; }
+.div-tl-cash { font-size: 13.5px; font-weight: 700; color: var(--text); }
+.div-tl-stock { font-size: 12px; font-weight: 600; color: var(--muted); }
+.div-tl-stock.has { color: var(--accent-2); }
+
+/* ================= Comparison cards ================= */
+.comp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; margin-bottom: 18px; }
+.comp { display: flex; flex-direction: column; gap: 8px; }
+.comp-head { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.comp-current { font-size: 44px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+.comp-current span { font-size: 22px; font-weight: 700; color: var(--muted); margin-left: 3px; }
+.comp-curlabel { font-size: 12.5px; color: var(--muted); }
+.comp-refs { display: flex; gap: 10px; margin-top: 10px; }
+.comp-ref {
+  flex: 1; background: var(--card-2); border: 1px solid var(--border-soft);
+  border-radius: 10px; padding: 10px 13px; display: flex; flex-direction: column; gap: 2px;
+}
+.comp-ref span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.comp-ref b { font-size: 20px; font-weight: 700; }
+.comp-bullets { list-style: none; margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
+.comp-bullets li { font-size: 13.5px; font-weight: 600; padding-left: 14px; position: relative; }
+.comp-bullets li::before { content: "●"; position: absolute; left: 0; top: 0; font-size: 10px; }
+.comp-bullets li.below { color: var(--green); }
+.comp-bullets li.below::before { color: var(--green); }
+.comp-bullets li.above { color: var(--red); }
+.comp-bullets li.above::before { color: var(--red); }
+.comp-bullets li.neutral { color: var(--muted); }
+.comp-bullets li.neutral::before { color: var(--muted); }
+.comp-status {
+  margin-top: auto; padding-top: 12px; text-align: center;
+  font-size: 15px; font-weight: 800; letter-spacing: 0.12em;
+  padding: 9px 16px; border-radius: 10px;
+}
+.comp-status.green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.comp-status.red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+.comp-status.amber { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+
+/* ================= Gauges ================= */
+.gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; margin-bottom: 18px; }
+.gauge-title { font-size: 13px; font-weight: 700; margin-bottom: 12px; }
+.gauge-track {
+  position: relative; height: 12px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--green) 0%, #84cc16 25%, var(--amber) 50%, var(--orange) 75%, var(--red) 100%);
+}
+.gauge-marker { position: absolute; top: 50%; transform: translate(-50%, -50%); }
+.gauge-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--card); border: 3px solid var(--text);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+}
+.gauge-scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 6px; }
+.gauge-caption { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+/* ================= Range bars ================= */
+.section-title { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 14px; }
+.section-title .pill-info { margin-left: 8px; font-size: 11px; vertical-align: 2px; }
+.dist { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 26px; }
+.dist h4 { font-size: 13.5px; font-weight: 700; margin-bottom: 14px; }
+.range-track {
+  position: relative; height: 14px; border-radius: 7px;
+  background: linear-gradient(90deg, var(--green) 0%, var(--amber) 50%, var(--red) 100%);
+  opacity: 0.92;
+}
+.range-marker { position: absolute; top: 50%; transform: translate(-50%, -50%); }
+.rm-med { width: 3px; height: 26px; background: var(--text); border-radius: 2px; opacity: 0.9; }
+.rm-avg {
+  width: 11px; height: 11px; background: var(--card);
+  border: 2px solid var(--text); border-radius: 2px;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.rm-cur {
+  width: 17px; height: 17px; background: var(--card);
+  border: 4px solid var(--accent); border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  z-index: 3;
+}
+.range-labels { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-top: 9px; }
+.range-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--muted); margin-top: 10px; }
+.range-legend b { color: var(--text); font-variant-numeric: tabular-nums; }
+.range-legend .lg-cur b { color: var(--accent); }
+.range-empty { padding: 10px 0; font-size: 13px; color: var(--muted); }
+
+/* ================= Charts ================= */
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 18px; margin-bottom: 18px; }
+.chart-wrap { position: relative; height: 330px; }
+
+/* ================= Table ================= */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 11px 13px; text-align: left; border-bottom: 1px solid var(--border-soft); white-space: nowrap; }
+th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+td { font-size: 14px; }
+td.num, th.num { text-align: right; }
+tr:last-child td { border-bottom: none; }
+.table-note { font-size: 12px; color: var(--muted); margin-top: 12px; }
+.badge {
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.05em;
+  padding: 3px 10px; border-radius: 999px; text-transform: uppercase;
+}
+.badge.cheap { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.badge.expensive { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+.badge.fair { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+.val-below { color: var(--green); font-weight: 600; }
+.val-above { color: var(--red); font-weight: 600; }
+.val-neutral { color: var(--muted); font-weight: 600; }
+
+/* ================= Assessment ================= */
+#assessmentCard p { font-size: 14.5px; margin-bottom: 10px; }
+#assessmentCard .assess-badge { margin-bottom: 14px; }
+.disclaimer {
+  font-size: 12px !important; color: var(--muted) !important;
+  border-top: 1px solid var(--border-soft); padding-top: 12px; margin-top: 14px !important;
+}
+.score-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 4px; }
+.score-chip {
+  font-size: 12.5px; font-weight: 700; padding: 5px 12px; border-radius: 999px;
+}
+.score-chip.green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.score-chip.red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+.score-chip.amber { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+
+footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 16px 30px; }
+
+@media (max-width: 640px) {
+  .topbar h1 { font-size: 17px; }
+  .hero-head h2 { font-size: 17px; }
+  .control-row input { flex: 1 1 100%; }
+  .chart-wrap { height: 270px; }
+  .control-top { flex-direction: column; align-items: stretch; }
+  .mode-switch, .seg { width: 100%; }
+  .mode-switch .pill, .seg .seg-btn { flex: 1; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">V</div>
+    <div>
+      <h1>Vietnam Stock Dashboard</h1>
+      <p class="subtitle">Valuation · price · dividends · fundamentals</p>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="demo-badge live" id="demoBadge">Live · VNDirect</span>
+    <button class="theme-btn" id="themeToggle" type="button" title="Toggle dark mode">Dark</button>
+  </div>
+</header>
+
+<main>
+  <!-- ============ Controls ============ -->
+  <section class="card controls">
+    <div class="control-top">
+      <div class="mode-switch" role="tablist" aria-label="Analysis target">
+        <button class="pill active" id="modeStock" type="button">Stock</button>
+        <button class="pill" id="modeIndex" type="button">VN-Index</button>
+      </div>
+      <div class="seg" role="group" aria-label="Analysis period">
+        <button class="seg-btn" data-period="3y" type="button">3Y</button>
+        <button class="seg-btn active" data-period="5y" type="button">5Y</button>
+        <button class="seg-btn" data-period="10y" type="button">10Y</button>
+        <button class="seg-btn" data-period="all" type="button">All</button>
+      </div>
+    </div>
+    <form id="analyzeForm" class="control-row" autocomplete="off">
+      <input id="tickerInput" type="text" placeholder="Ticker, e.g. TPB" maxlength="7" spellcheck="false" aria-label="Stock ticker">
+      <button class="btn-analyze" id="analyzeBtn" type="submit">Analyze</button>
+    </form>
+    <div class="suggestions">
+      <span>Quick picks:</span>
+      <button class="chip" data-ticker="TPB" type="button">TPB</button>
+      <button class="chip" data-ticker="TCB" type="button">TCB</button>
+      <button class="chip" data-ticker="VIB" type="button">VIB</button>
+      <button class="chip" data-ticker="ACB" type="button">ACB</button>
+      <button class="chip" data-ticker="VNM" type="button">VNM</button>
+      <button class="chip" data-ticker="VEA" type="button">VEA</button>
+      <button class="chip" data-ticker="VNINDEX" type="button">VN-Index</button>
+    </div>
+  </section>
+
+  <div id="alertBox" class="alert hidden"></div>
+
+  <!-- ============ Dashboard ============ -->
+  <div id="content" class="hidden">
+
+    <section class="card hero" aria-label="Current valuation summary">
+      <div class="hero-head">
+        <h2 id="assetTitle"></h2>
+        <span class="ticker-pill" id="tickerPill"></span>
+        <span class="pill-info" id="periodLabelBadge"></span>
+        <span class="pill-info" id="asOfBadge"></span>
+      </div>
+      <div class="hero-grid">
+        <div class="hero-metric" id="priceCard"></div>
+        <div class="hero-metric" id="heroPe"></div>
+        <div class="hero-metric" id="heroPb"></div>
+        <div class="hero-metric" id="dividendCard"></div>
+      </div>
+      <div class="hero-overall">
+        <div class="hero-overall-label">Historical valuation assessment</div>
+        <span class="assess-badge tone-gray" id="overallBadge">—</span>
+        <p class="hero-sentence" id="heroSentence"></p>
+      </div>
+    </section>
+
+    <section class="card" id="fundSection" aria-label="Business and cash flow fundamentals">
+      <div class="fund-headbar">
+        <div class="section-title" id="fundTitle">Fundamental Analysis</div>
+        <div class="seg" role="group" aria-label="Fundamental data period">
+          <button class="seg-btn active" data-fperiod="yearly" type="button">Yearly</button>
+          <button class="seg-btn" data-fperiod="quarterly" type="button">Quarterly</button>
+        </div>
+      </div>
+      <div id="fundBody"></div>
+    </section>
+
+    <section class="card" id="dividendSection" aria-label="Dividend history">
+      <div class="section-title">Dividend History</div>
+      <div id="dividendBody"></div>
+    </section>
+
+    <section class="comp-grid" aria-label="P/E and P/B comparison">
+      <div class="card comp" id="compPe"></div>
+      <div class="card comp" id="compPb"></div>
+    </section>
+
+    <section class="gauges" aria-label="Historical percentile gauges">
+      <div class="card" id="gaugePE"></div>
+      <div class="card" id="gaugePB"></div>
+    </section>
+
+    <section class="card" aria-label="Historical range position">
+      <div class="section-title">Where Does the Current Valuation Sit?</div>
+      <div class="dist">
+        <div>
+          <h4>P/E Historical Range</h4>
+          <div id="rangePe"></div>
+        </div>
+        <div>
+          <h4>P/B Historical Range</h4>
+          <div id="rangePb"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="charts" aria-label="Historical valuation charts">
+      <div class="card">
+        <div class="section-title">Historical P/E</div>
+        <div class="chart-wrap"><canvas id="chartPe" aria-label="P/E chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="section-title">Historical P/B</div>
+        <div class="chart-wrap"><canvas id="chartPb" aria-label="P/B chart"></canvas></div>
+      </div>
+    </section>
+
+    <section class="card" aria-label="Valuation statistics table">
+      <div class="section-title">Valuation Statistics</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th class="num">Current</th>
+              <th class="num">Average</th>
+              <th class="num">Median</th>
+              <th class="num">vs Average</th>
+              <th class="num">vs Median</th>
+              <th class="num">Status</th>
+            </tr>
+          </thead>
+          <tbody id="statsTableBody"></tbody>
+        </table>
+      </div>
+      <p class="table-note" id="tableNote"></p>
+    </section>
+
+    <section class="card" id="assessmentCard" aria-label="Valuation assessment"></section>
+  </div>
+
+  <div id="loading" class="loading hidden">
+    <div class="spinner"></div>
+    <div>Loading valuation data…</div>
+  </div>
+</main>
+
+<footer>
+  Data: VNDirect (prices, ratios, dividends) &amp; cafef (financial statements). Historical comparison only; not investment advice.
+</footer>
+
+<script>
+"use strict";
+/* =====================================================================
+   VIETNAM STOCK DASHBOARD — single-file application
+   ---------------------------------------------------------------------
+   Data source architecture:
+   - `getStockData(ticker, period)` is the ONLY entry point the UI uses.
+     It aggregates four data layers:
+       1. Valuation  — VNDirect daily P/E (`PRICE_TO_EARNINGS`) and P/B
+          (`PRICE_TO_BOOK`) ratios (stocks and indices).
+       2. Price      — VNDirect `/v4/stock_prices`; `close` is in
+          thousands of VND, so it is multiplied by 1000.
+       3. Dividends  — VNDirect `/v4/events`: type DIVIDEND (cash, VND
+          per share, field `dividend`) and type STOCKDIV (stock, percent
+          of existing shares, field `ratio`). VN/EN duplicates are
+          de-duplicated by newsId (EN_GB preferred). Cash and stock
+          dividends are NEVER combined into a single yield.
+       4. Fundamentals — cafef financial statements (balance sheet,
+          income statement, cash flow), ANNUAL (`TypeTime=NAM`) and
+          QUARTERLY (`TypeTime=QUY`). Item codes follow the Vietnamese
+          accounting template (TT200):
+            Corporate BS (TN): 110 cash, 270 total assets;
+            (NV): 300 liabilities, 320 ST borrowings, 338 LT borrowings,
+            400 equity.
+            Bank BS (TN): 130 deposits at TCTD, 140 trading securities,
+            160 loans, 170 investment securities, 300 total assets;
+            (NV): 400 liabilities, 500 equity.
+            Corporate IS: 30 operating profit (EBIT), 50 EBT,
+            51+52 taxes, 60 NPAT.
+            Bank IS: 1 interest income, 2 interest expense,
+            3 net interest income, 21 NPAT, 26 NPAT of the parent.
+            Cash flow: HDKD_20 operating cash flow, HDDT_22 capex,
+            HDDT_28 "interest, dividends and profit received".
+          Quarterly income statements are per-quarter (standalone);
+          quarterly cash-flow statements are cumulative year-to-date
+          (Q2 = H1), so standalone quarter values are derived by
+          differencing consecutive quarters.
+   - All APIs are CORS-open, so the app works when opened from disk.
+   - If live data fails, the app falls back to a synthetic demo provider
+     flagged `isDemo` and clearly labelled in the UI.
+   - Every value is computed from live data — nothing is fabricated.
+     Missing data renders as "Data unavailable"; metrics that are not
+     applicable to a business type are hidden entirely.
+   Valuation semantics:
+   - `classifyValuation(current, reference)` is the single source of
+     truth for Cheap / Fair / Expensive (lower multiple = cheaper).
+   - "discount" = current below reference (green); "premium" = current
+     above reference (red).
+   All averages, medians, percentiles, discounts and assessments are
+   computed dynamically from `historical` — nothing is hard-coded.
+   ===================================================================== */
+
+/* -------------------- Configuration -------------------- */
+var USE_LIVE_DATA = true; // set to false to force the synthetic demo provider
+const VND_API_BASE = "https://api-finfo.vndirect.com.vn/v4/ratios";
+const VND_PRICE_API = "https://api-finfo.vndirect.com.vn/v4/stock_prices";
+const VND_STOCK_API = "https://api-finfo.vndirect.com.vn/v4/stocks";
+const VND_EVENT_API = "https://api-finfo.vndirect.com.vn/v4/events";
+const CAFEF_BS_API = "https://apiweb.cafef.vn/api/v2/BCTC/GetReportCDKT";
+const CAFEF_IS_API = "https://apiweb.cafef.vn/api/v1/BCTC/GetReportDetail";
+const CAFEF_CF_API = "https://apiweb.cafef.vn/api/v1/BCTC/GetReportLCTT";
+const CAFEF_TIMEOUT_MS = 15000; // cafef v1 endpoints are slow/intermittent — give up after this
+const CAFEF_MAX_ATTEMPTS = 3;   // retry transient timeouts before declaring failure
+const CAFEF_RETRY_MS = 800;     // backoff between attempts
+const VND_START_DATE = "2010-01-01"; // earliest report date to request
+const VND_PE_CODE = "PRICE_TO_EARNINGS";
+const VND_PB_CODE = "PRICE_TO_BOOK";
+const PE_OUTLIER_CAP = 150; // P/E above this is treated as an outlier (low-EPS distortions)
+const MIN_OBSERVATIONS = 12; // minimum cleaned observations for reliable statistics
+const MIN_FUND_ROWS = 2; // minimum rows for a fundamentals panel
+const FAIR_TOLERANCE = 0.05; // ±5% — premium side only: classify as Fair within this band
+const CHEAP_DISCOUNT = 0.10; // discount >10% — classify as Cheap; a 0–10% discount stays Fair
+const PERIOD_LABELS = { "3y": "3 Years", "5y": "5 Years", "10y": "10 Years", "all": "All Available Data" };
+const INDEX_TICKERS = ["VNINDEX", "HNX", "HNXINDEX", "UPCOM", "UPCOMINDEX", "VN30"];
+const BANK_TICKERS = new Set(
+  "ABB ACB BAB BID BVB CTG EIB HDB KLB LPB MBB MSB NAB NVB OCB PGB SGB SHB SSB STB TCB TPB VAB VCB VIB VPB VBB".split(" ")
+);
+
+/* Adjusted-FCF double-counting guard (#7).
+   VAS/cafef report "interest, dividends and profit received" (HDDT_28)
+   under INVESTING activities — it is NOT part of operating cash flow
+   (HDKD_20). Therefore associate/JV dividends received are NOT already
+   in OCF and are added back:
+       adjustedFCF = OCF - Capex + associateJVDividendsReceived
+   If a future data source ever includes those dividends inside OCF,
+   flip the per-ticker flag below and the layer will NOT add them again:
+       adjustedFCF = OCF - Capex
+   This prevents double counting by construction. */
+const ASSOCIATE_DIVS_IN_OCF_OVERRIDES = {}; // e.g. { "XXX": true }
+function associateDivsIncludedInOcf(ticker) {
+  return ASSOCIATE_DIVS_IN_OCF_OVERRIDES[String(ticker || "").toUpperCase()] === true;
+}
+
+/* Leverage ratio definition (#3): no regulatory leverage ratio (Tier-1 /
+   exposure) is exposed by VNDirect or cafef public APIs, so the banking
+   leverage metric is computed from the balance sheet and CLEARLY labelled
+   "Assets / Equity". The definition is a constant so it can never be
+   mixed across periods. If a regulatory source is added later, switch
+   this constant and the label follows automatically. */
+const LEVERAGE_DEFINITION = "assets-equity"; // "assets-equity" | "regulatory"
+const LEVERAGE_LABEL = LEVERAGE_DEFINITION === "regulatory"
+  ? "Regulatory Leverage Ratio" : "Assets / Equity";
+
+/* NPL (#2): the non-performing-loan ratio is a regulatory disclosure that
+   is NOT published in the standard financial statements exposed by the
+   VNDirect/cafef public APIs. Per the project rules it is never
+   fabricated — the bank panel renders an honest "Data unavailable"
+   explanation instead. */
+const NPL_UNAVAILABLE_REASON =
+  "NPL (non-performing loan ratio) is a regulatory disclosure that is not " +
+  "published in the standard financial statements exposed by the VNDirect/cafef APIs. " +
+  "It is not estimated to avoid fabricating data.";
+
+const COMPANY_NAMES = {
+  TPB: "Tien Phong Commercial Joint Stock Bank (TPBank)",
+  TCB: "Vietnam Technological and Commercial Joint Stock Bank (Techcombank)",
+  VIB: "Vietnam International Commercial Joint Stock Bank (VIB)",
+  ACB: "Asia Commercial Joint Stock Bank (ACB)",
+  MBB: "Military Commercial Joint Stock Bank (MB Bank)",
+  STB: "Sai Gon Thuong Tin Commercial Joint Stock Bank (Sacombank)",
+  CTG: "Vietnam Joint Stock Commercial Bank for Industry and Trade (VietinBank)",
+  BID: "Joint Stock Commercial Bank for Investment and Development of Vietnam (BIDV)",
+  VCB: "Joint Stock Commercial Bank for Foreign Trade of Vietnam (Vietcombank)",
+  VPB: "Vietnam Prosperity Joint Stock Commercial Bank (VPBank)",
+  HDB: "Ho Chi Minh City Development Joint Stock Commercial Bank (HDBank)",
+  MSB: "Maritime Commercial Joint Stock Bank (MSB)",
+  VNM: "Vietnam Dairy Products Joint Stock Company (Vinamilk)",
+  SAB: "Saigon Beer Alcohol Beverage Corporation (Sabeco)",
+  VHM: "Vinhomes Joint Stock Company",
+  VIC: "Vingroup Joint Stock Company",
+  VRE: "Vincom Retail Joint Stock Company",
+  FPT: "FPT Corporation",
+  MWG: "Mobile World Investment Corporation",
+  HPG: "Hoa Phat Group Joint Stock Company",
+  GAS: "PetroVietnam Gas Joint Stock Corporation (PV Gas)",
+  PLX: "Petrolimex Group Corporation",
+  POW: "Petrovietnam Power Corporation (PV Power)",
+  GVR: "Vietnam Rubber Group Joint Stock Company",
+  KDH: "Khang Dien House Trading and Investment Joint Stock Company",
+  NVL: "No Va Land Investment Group Corporation (Novaland)",
+  DXG: "Dat Xanh Group Joint Stock Company",
+  PDR: "Phat Dat Real Estate Development Corporation",
+  DIG: "DIC Corporation",
+  KBC: "Kinh Bac City Development Holding Corporation",
+  VEA: "Vietnam Electric Cable Corporation",
+  VNINDEX: "VN-Index (Ho Chi Minh Stock Exchange)",
+  HNX: "HNX-Index (Hanoi Stock Exchange)",
+  HNXINDEX: "HNX-Index (Hanoi Stock Exchange)",
+  UPCOM: "UPCOM-Index (Unlisted Public Company Market)",
+  UPCOMINDEX: "UPCOM-Index (Unlisted Public Company Market)",
+  VN30: "VN30 (Ho Chi Minh Stock Exchange)"
+};
+
+/* -------------------- Small utilities -------------------- */
+function fmtNum(x, digits) {
+  if (digits == null) digits = 1;
+  if (x == null || !isFinite(x)) return "—";
+  return x.toFixed(digits);
+}
+function fmtAbsPct(x) {
+  if (x == null || !isFinite(x)) return "—";
+  return Math.abs(x).toFixed(1) + "%";
+}
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function gaussish(rng) { return (rng() + rng() + rng() - 1.5) / 1.5; }
+
+/* Money / ratio formatting. */
+function fmtVND(v) {
+  if (v == null || !isFinite(v)) return "—";
+  return Math.round(v).toLocaleString("en-US") + " VND";
+}
+function fmtBn(v) {
+  if (v == null || !isFinite(v)) return "—";
+  return (v / 1e9).toLocaleString("en-US", { maximumFractionDigits: 0 }) + " bn";
+}
+function pct1(v) { // ratio -> "24.5%"
+  if (v == null || !isFinite(v)) return "—";
+  return (v * 100).toFixed(1) + "%";
+}
+function pct2(v) { // ratio -> "7.22%"
+  if (v == null || !isFinite(v)) return "—";
+  return (v * 100).toFixed(2) + "%";
+}
+function x2(v) { // ratio -> "0.42x"
+  if (v == null || !isFinite(v)) return "—";
+  return v.toFixed(2) + "x";
+}
+
+/* -------------------- Valuation classification --------------------
+   SINGLE source of truth for Cheap / Fair / Expensive.
+   - difference = (current - reference) / reference  (percent, signed)
+   - negative (current below reference) → discount; positive → premium
+   - discount > 10% → Cheap (green); 0–10% discount → Fair (neutral)
+     but still reported as a discount with its magnitude
+   - premium > ±tolerance → Expensive (red); within ±tolerance → Fair */
+function classifyValuation(current, reference, tolerance) {
+  if (tolerance == null) tolerance = FAIR_TOLERANCE;
+  if (!isFinite(current) || !isFinite(reference) || reference <= 0) {
+    return { status: "Fair", color: "neutral", difference: NaN, type: "fair" };
+  }
+  const difference = ((current - reference) / reference) * 100;
+  if (difference < 0) {
+    const cheap = difference < -CHEAP_DISCOUNT * 100;
+    return {
+      status: cheap ? "Cheap" : "Fair",
+      color: cheap ? "green" : "neutral",
+      difference: Math.abs(difference),
+      type: "discount"
+    };
+  }
+  if (difference > tolerance * 100) {
+    return { status: "Expensive", color: "red", difference: difference, type: "premium" };
+  }
+  return { status: "Fair", color: "neutral", difference: Math.abs(difference), type: "fair" };
+}
+
+/* Human-friendly relative wording: "20.0% discount" / "14.3% premium" / "≈ in line". */
+function relText(reference, current) {
+  const c = classifyValuation(current, reference);
+  if (c.type === "discount") return { text: fmtAbsPct(c.difference) + " discount", cls: "below" };
+  if (c.type === "premium") return { text: fmtAbsPct(c.difference) + " premium", cls: "above" };
+  return { text: "≈ in line", cls: "neutral" };
+}
+
+/* Full sentence: "P/E is 33.2% below the historical average". */
+function vsSentence(subject, refLabel, current, reference) {
+  const c = classifyValuation(current, reference);
+  if (c.type === "discount") return subject + " is " + fmtAbsPct(c.difference) + " below the historical " + refLabel;
+  if (c.type === "premium") return subject + " is " + fmtAbsPct(c.difference) + " above the historical " + refLabel;
+  return subject + " is approximately in line with the historical " + refLabel;
+}
+
+/* Single status for one metric, preferring the median as reference. */
+function metricStatus(current, median, avg) {
+  const ref = isFinite(median) ? median : avg;
+  return classifyValuation(current, ref);
+}
+
+/* -------------------- Statistics -------------------- */
+function mean(xs) {
+  if (!xs || xs.length === 0) return NaN;
+  return xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+function median(xs) { return percentile([...xs].sort((a, b) => a - b), 0.5); }
+function percentile(sorted, p) {
+  if (!sorted || sorted.length === 0) return NaN;
+  const idx = (sorted.length - 1) * p;
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+function ecdfPercentile(values, current) {
+  if (!values || values.length === 0) return NaN;
+  let le = 0;
+  for (const v of values) if (v <= current) le++;
+  return (le / values.length) * 100;
+}
+function discount(reference, current) {
+  if (reference == null || !isFinite(reference) || reference <= 0) return NaN;
+  return ((reference - current) / reference) * 100;
+}
+function sliceByPeriod(history, period) {
+  if (period === "all" || period == null || period === "") return history;
+  const years = { "3y": 3, "5y": 5, "10y": 10 }[period];
+  if (!years) return history;
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - years);
+  return history.filter((p) => new Date(p.date) >= cutoff);
+}
+function cleanSeries(points, key, cap) {
+  const values = [];
+  const pointsOut = [];
+  const excluded = { invalid: 0, negative: 0, extreme: 0 };
+  for (const p of points) {
+    const v = p[key];
+    if (v == null || !isFinite(v)) { excluded.invalid++; continue; }
+    if (v <= 0) { excluded.negative++; continue; }
+    if (cap != null && v > cap) { excluded.extreme++; continue; }
+    values.push(v);
+    pointsOut.push({ date: p.date, value: v });
+  }
+  return { values, points: pointsOut, excluded, cap };
+}
+function computeSeriesStats(values, current) {
+  const sorted = [...values].sort((a, b) => a - b);
+  return {
+    count: values.length,
+    mean: mean(sorted),
+    median: percentile(sorted, 0.5),
+    min: sorted.length ? sorted[0] : NaN,
+    p25: percentile(sorted, 0.25),
+    p75: percentile(sorted, 0.75),
+    max: sorted.length ? sorted[sorted.length - 1] : NaN,
+    percentile: ecdfPercentile(sorted, current)
+  };
+}
+
+/* -------------------- Mock data provider --------------------
+   Deterministic per ticker (seeded PRNG) so reloads are stable.
+   Demo only — never live. */
+const MOCK_PROFILES = {
+  TPB: { name: "TPBank", pe: 8.2, pb: 0.82, peStart: 2.30, pbStart: 2.00, peVol: 0.16, pbVol: 0.15, peCycle: 60,
+         eps: 1689, dividend: 1000, stockDivPct: 5, sector: "bank", nimBase: 3.42, nimVol: 0.28, eaBase: 459000e9, roeBase: 0.16 },
+  TCB: { name: "Techcombank", pe: 9.1, pb: 1.02, peStart: 1.40, pbStart: 1.25, peVol: 0.15, pbVol: 0.16, peCycle: 54,
+         eps: 3000, dividend: 1500, stockDivPct: 0, sector: "bank", nimBase: 4.1, nimVol: 0.3, eaBase: 700000e9, roeBase: 0.18 },
+  VIB: { name: "VIB Bank", pe: 7.6, pb: 1.15, peStart: 1.55, pbStart: 1.30, peVol: 0.17, pbVol: 0.16, peCycle: 48,
+         eps: 2600, dividend: 1300, stockDivPct: 10, sector: "bank", nimBase: 4.2, nimVol: 0.35, eaBase: 330000e9, roeBase: 0.21 },
+  ACB: { name: "ACB Bank", pe: 9.4, pb: 1.28, peStart: 1.45, pbStart: 1.35, peVol: 0.14, pbVol: 0.15, peCycle: 66,
+         eps: 5200, dividend: 2600, stockDivPct: 0, sector: "bank", nimBase: 3.5, nimVol: 0.25, eaBase: 620000e9, roeBase: 0.19 },
+  VNM: { name: "Vinamilk", pe: 14.8, pb: 3.10, peStart: 1.50, pbStart: 1.30, peVol: 0.20, pbVol: 0.22, peCycle: 48,
+         eps: 4800, dividend: 1450, stockDivPct: 0, sector: "corporate", roicBase: 0.245, roicVol: 0.02, ocfBase: 8700e9, deBase: 0.42, capexPct: 0.18, assocDivBase: 300e9 },
+  VEA: { name: "Vietnam Electric Cable", pe: 9.2, pb: 1.60, peStart: 1.60, pbStart: 1.40, peVol: 0.18, pbVol: 0.20, peCycle: 42,
+         eps: 5200, dividend: 2000, stockDivPct: 0, sector: "corporate", roicBase: 0.16, roicVol: 0.02, ocfBase: 900e9, deBase: 0.8, capexPct: 0.1, assocDivBase: 20e9 },
+  VNINDEX: { name: "VN-Index", pe: 13.0, pb: 1.75, peStart: 1.35, pbStart: 1.20, peVol: 0.13, pbVol: 0.12, peCycle: 72 }
+};
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hashString(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function isoDate(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-01";
+}
+function monthDates(count) {
+  const out = [];
+  const now = new Date();
+  for (let i = count - 1; i >= 0; i--) {
+    out.push(isoDate(new Date(now.getFullYear(), now.getMonth() - i, 1)));
+  }
+  return out;
+}
+function generateMockSeries(rng, target, months, opts) {
+  const raw = [];
+  for (let i = 0; i < months; i++) {
+    const t = months === 1 ? 1 : i / (months - 1);
+    const path = opts.startFactor + (1 - opts.startFactor) * t;
+    const cycle = (opts.cycleAmp *
+      (Math.sin((2 * Math.PI * i) / opts.cycleLen + 1.1) +
+       Math.sin((2 * Math.PI * i) / (opts.cycleLen * 2.4) + 4.2))) / 2;
+    let v = target * (path + cycle) * (1 + gaussish(rng) * opts.vol * 0.5);
+    if (i < months - 1 && rng() < opts.negProb) v = -(5 + rng() * 15);          // negative earnings
+    if (i < months - 1 && rng() < opts.spikeProb) v = 120 + rng() * 280;        // extreme P/E spike
+    raw.push(v);
+  }
+  const scale = target / raw[months - 1];
+  return raw.map((v) => v * scale);
+}
+
+/* Deterministic demo fundamentals — demo only. Both yearly (8 years) and
+   quarterly (8 quarters, derived from the same profile) datasets are
+   produced so the Quarterly/Yearly toggle works in demo mode. */
+function generateMockFundamentals(sector, profile, rng) {
+  const rows = [];
+  const n = 8;
+  const nowY = new Date().getFullYear();
+  for (let i = 0; i < n; i++) {
+    const year = nowY - n + i;
+    const t = i / (n - 1);
+    if (sector === "bank") {
+      const nimPct = (profile.nimBase != null ? profile.nimBase : 3.2) +
+        Math.sin(i / 1.9) * (profile.nimVol != null ? profile.nimVol : 0.3) + gaussish(rng) * 0.08;
+      const ea = (profile.eaBase != null ? profile.eaBase : 300e9) * (0.55 + 0.45 * t) * (1 + gaussish(rng) * 0.02);
+      const equity = ea / 9.5; // ~10x leverage
+      const roe = (profile.roeBase != null ? profile.roeBase : 0.15) + Math.sin(i / 2.4) * 0.015 + gaussish(rng) * 0.006;
+      const npl = (profile.nplBase != null ? profile.nplBase : 0.012 + rng() * 0.02) * (0.8 + 0.4 * rng());
+      rows.push({
+        year, roe: Math.max(0.05, roe), nim: Math.max(0, nimPct / 100),
+        npl, nplAsOf: "Q4-" + year, leverageRatio: ea / equity,
+        nii: (ea * nimPct) / 100, ea, totalAssets: ea * 1.1, equity
+      });
+    } else {
+      const roic = (profile.roicBase != null ? profile.roicBase : 0.18) +
+        Math.sin(i / 2.2) * (profile.roicVol != null ? profile.roicVol : 0.02) + gaussish(rng) * 0.004;
+      const ocf = (profile.ocfBase != null ? profile.ocfBase : 5000e9) * (0.55 + 0.45 * t) * (1 + gaussish(rng) * 0.03);
+      const capex = ocf * (profile.capexPct != null ? profile.capexPct : 0.2) * (0.8 + 0.4 * rng());
+      const de = (profile.deBase != null ? profile.deBase : 0.5) * (0.85 + 0.3 * rng());
+      const divRec = (profile.assocDivBase != null ? profile.assocDivBase : 50e9) * (0.8 + 0.4 * rng());
+      rows.push({
+        year, roic: Math.max(0, roic), fcf: ocf - capex, adjustedFcf: ocf - capex + divRec,
+        ocf, capex, de, associateJVDividendsReceived: divRec
+      });
+    }
+  }
+  const qRows = [];
+  for (const r of rows) {
+    const q = 4;
+    for (let k = 0; k < q; k++) {
+      const jitter = 0.85 + 0.3 * rng();
+      if (sector === "bank") {
+        qRows.push({
+          year: r.year, quarter: k + 1, period: "Q" + (k + 1) + "-" + r.year,
+          roe: r.roe * jitter, nim: r.nim * jitter,
+          npl: r.npl * (0.9 + 0.2 * rng()),
+          leverageRatio: r.leverageRatio * (0.98 + 0.04 * rng()),
+          nii: r.nii / q * jitter, ea: r.ea, totalAssets: r.totalAssets, equity: r.equity
+        });
+      } else {
+        qRows.push({
+          year: r.year, quarter: k + 1, period: "Q" + (k + 1) + "-" + r.year,
+          roic: r.roic * jitter,
+          fcf: r.fcf / q * jitter, adjustedFcf: r.adjustedFcf / q * jitter,
+          ocf: r.ocf / q * jitter, capex: r.capex / q * jitter, de: r.de * (0.95 + 0.1 * rng()),
+          associateJVDividendsReceived: r.associateJVDividendsReceived / q * jitter
+        });
+      }
+    }
+  }
+  const meta = sector === "bank" ? {
+    nplAvailable: true,
+    nplUnavailable: NPL_UNAVAILABLE_REASON,
+    leverageDefinition: LEVERAGE_DEFINITION,
+    leverageLabel: LEVERAGE_LABEL
+  } : {};
+  return Object.assign({ type: sector }, meta, { yearly: { rows }, quarterly: { rows: qRows } });
+}
+
+/* Pure dividend-history summary from records (shared by live & mock). */
+function summarizeDividends(records) {
+  if (!records || records.length === 0) return { years: [], summary: null };
+  const byYear = new Map();
+  let earliest = Infinity;
+  for (const r of records) {
+    const y = r.divYear;
+    if (y < earliest) earliest = y;
+    if (!byYear.has(y)) byYear.set(y, { year: y, cash: 0, stock: 0, cashCount: 0 });
+    const agg = byYear.get(y);
+    if (r.cashDividendPerShare > 0) { agg.cash += r.cashDividendPerShare; agg.cashCount++; }
+    if (r.stockDividendPercent > 0) agg.stock += r.stockDividendPercent;
+  }
+  const years = Array.from(byYear.values()).sort((a, b) => a.year - b.year);
+  const cashYears = years.filter((y) => y.cash > 0);
+  const stockYears = years.filter((y) => y.stock > 0);
+  const lastCash = cashYears.length ? cashYears[cashYears.length - 1] : null;
+  const lastStock = stockYears.length ? stockYears[stockYears.length - 1] : null;
+  let trend = null; // "up" | "down" | "stable"
+  if (cashYears.length >= 2) {
+    const a = cashYears[cashYears.length - 2].cash;
+    const b = lastCash.cash;
+    const d = (b - a) / (a || 1);
+    trend = d > 0.01 ? "up" : d < -0.01 ? "down" : "stable";
+  }
+  let consistencyYears = 0;
+  let consistencyComplete = true;
+  if (lastCash) {
+    let y = lastCash.year;
+    const set = new Set(cashYears.map((c) => c.year));
+    while (set.has(y)) { consistencyYears++; y--; }
+    // If the run reaches the earliest record year we cannot know whether
+    // dividends continued further back — do not claim a full history.
+    consistencyComplete = earliest < lastCash.year - consistencyYears + 1;
+  }
+  return {
+    years,
+    earliestRecordYear: isFinite(earliest) ? earliest : null,
+    summary: {
+      lastCashYear: lastCash ? lastCash.year : null,
+      lastCashDps: lastCash ? lastCash.cash : null,
+      lastStockYear: lastStock ? lastStock.year : null,
+      lastStockPct: lastStock ? lastStock.stock : null,
+      trend,
+      consistencyYears,
+      consistencyComplete
+    }
+  };
+}
+
+const MockDataProvider = {
+  syntheticProfile(ticker) {
+    const rng = mulberry32(hashString(ticker + "|prof"));
+    const pe = +(6 + rng() * 12).toFixed(1);
+    const pb = +(0.6 + rng() * 2.4).toFixed(2);
+    const eps = Math.round(1000 + rng() * 19000);
+    const dividend = rng() < 0.85 ? Math.round(eps * (0.1 + rng() * 0.5)) : 0;
+    return {
+      name: "Synthetic (demo)", pe, pb, peStart: 1.5, pbStart: 1.35, peVol: 0.16, pbVol: 0.17, peCycle: 54,
+      eps, dividend, stockDivPct: rng() < 0.4 ? Math.round(5 + rng() * 15) : 0,
+      sector: BANK_TICKERS.has(ticker) ? "bank" : "corporate",
+      nimBase: 3 + rng() * 2, roicBase: 0.12 + rng() * 0.2, ocfBase: (1000 + rng() * 9000) * 1e9,
+      deBase: 0.3 + rng() * 1.2, capexPct: 0.1 + rng() * 0.3, roeBase: 0.1 + rng() * 0.12,
+      assocDivBase: rng() * 200e9
+    };
+  },
+  async getValuation(ticker) {
+    await new Promise((r) => setTimeout(r, 350)); // simulate network latency
+    const profile = MOCK_PROFILES[ticker] || this.syntheticProfile(ticker);
+    const rng = mulberry32(hashString(ticker + "|val"));
+    const months = 180; // 15 years of monthly observations
+    const dates = monthDates(months);
+    const peSer = generateMockSeries(rng, profile.pe, months, {
+      startFactor: profile.peStart, vol: profile.peVol, cycleAmp: 0.10, cycleLen: profile.peCycle,
+      negProb: 0.018, spikeProb: 0.015
+    });
+    const pbSer = generateMockSeries(rng, profile.pb, months, {
+      startFactor: profile.pbStart, vol: profile.pbVol, cycleAmp: 0.08, cycleLen: profile.peCycle * 0.9,
+      negProb: 0.004, spikeProb: 0.006
+    });
+    const historical = dates.map((date, i) => ({ date, pe: +peSer[i].toFixed(3), pb: +pbSer[i].toFixed(3) }));
+    const last = historical[historical.length - 1];
+    return {
+      ticker,
+      name: profile.name,
+      isSynthetic: !MOCK_PROFILES[ticker],
+      isDemo: true,
+      currentPE: last.pe,
+      currentPB: last.pb,
+      historical
+    };
+  },
+  async getStockData(ticker) {
+    const val = await this.getValuation(ticker);
+    if (INDEX_TICKERS.indexOf(ticker) >= 0) {
+      return Object.assign({}, val, {
+        isIndex: true, price: null, dividendHistory: null, dividendSummary: null,
+        sector: null, fundamentals: null, fundUnavailable: null
+      });
+    }
+    const profile = MOCK_PROFILES[ticker] || this.syntheticProfile(ticker);
+    const rng = mulberry32(hashString(ticker + "|fund"));
+    const eps = profile.eps != null ? profile.eps : Math.round(1000 + rng() * 19000);
+    const dps = profile.dividend != null ? profile.dividend : (rng() < 0.85 ? Math.round(eps * (0.1 + rng() * 0.5)) : 0);
+    const stockPct = profile.stockDivPct != null ? profile.stockDivPct : (rng() < 0.4 ? Math.round(5 + rng() * 15) : 0);
+    const price = { price: Math.round(profile.pe * eps), date: isoDate(new Date()) };
+    const sector = profile.sector != null ? profile.sector : (BANK_TICKERS.has(ticker) ? "bank" : "corporate");
+    const fundamentals = generateMockFundamentals(sector, profile, rng);
+    const nowY = new Date().getFullYear();
+    const records = [];
+    for (let i = 4; i >= 1; i--) {
+      const y = nowY - i;
+      const cash = Math.round(dps * (0.9 + 0.2 * rng()));
+      const stock = i === 1 && stockPct > 0 ? stockPct : (rng() < 0.25 ? stockPct : 0);
+      records.push({
+        date: isoDate(new Date(y, 5, 20)), divYear: y,
+        cashDividendPerShare: cash, stockDividendPercent: stock
+      });
+    }
+    const divAgg = summarizeDividends(records);
+    return Object.assign({}, val, {
+      isIndex: false,
+      price,
+      dividendHistory: records,
+      dividendSummary: divAgg.summary,
+      sector,
+      fundamentals,
+      fundUnavailable: null
+    });
+  }
+};
+
+/* -------------------- Live data provider (VNDirect) -------------------- */
+async function fetchVndSeries(ticker, ratioCode) {
+  const url = VND_API_BASE +
+    "?q=ratioCode:" + ratioCode + "~code:" + encodeURIComponent(ticker) +
+    "~reportDate:gte:" + VND_START_DATE +
+    "&sort=reportDate:asc&size=10000&fields=value,reportDate";
+  const res = await fetch(url, { headers: { accept: "application/json" } });
+  if (!res.ok) throw new Error("VNDirect API error (HTTP " + res.status + ")");
+  const json = await res.json();
+  const rows = (json && Array.isArray(json.data)) ? json.data : [];
+  return rows
+    .filter(function (r) { return r && typeof r.reportDate === "string" && isFinite(parseFloat(r.value)); })
+    .map(function (r) { return { date: r.reportDate, value: parseFloat(r.value) }; });
+}
+
+/* Bank NPL ratio (VNDirect ratios, BAD_LOANS_RATIO_AQ): bank-reported
+   quarterly values as fractions (e.g. 0.0205 = 2.05%), reported per
+   quarter-end. Same CORS-open api-finfo host as the valuation series. */
+async function fetchNplSeries(ticker) {
+  const url = VND_API_BASE +
+    "?q=ratioCode:BAD_LOANS_RATIO_AQ~code:" + encodeURIComponent(ticker) +
+    "~reportDate:gte:" + VND_START_DATE +
+    "&sort=reportDate:asc&size=1000&fields=value,reportDate";
+  const res = await fetch(url, { headers: { accept: "application/json" } });
+  if (!res.ok) throw new Error("NPL API error (HTTP " + res.status + ")");
+  const json = await res.json();
+  const rows = (json && Array.isArray(json.data)) ? json.data : [];
+  return rows
+    .filter(function (r) { return r && typeof r.reportDate === "string" && isFinite(parseFloat(r.value)); })
+    .map(function (r) { return { date: r.reportDate, value: parseFloat(r.value) }; });
+}
+
+async function fetchLiveValuation(ticker) {
+  const [peRows, pbRows] = await Promise.all([
+    fetchVndSeries(ticker, VND_PE_CODE),
+    fetchVndSeries(ticker, VND_PB_CODE)
+  ]);
+  if (!peRows.length || !pbRows.length) {
+    throw new Error("No valuation data for " + ticker + ".");
+  }
+  const peByDate = new Map(peRows.map(function (r) { return [r.date, r.value]; }));
+  const pbByDate = new Map(pbRows.map(function (r) { return [r.date, r.value]; }));
+  const dates = Array.from(peByDate.keys()).filter(function (d) { return pbByDate.has(d); }).sort();
+  if (dates.length === 0) throw new Error("No overlapping P/E and P/B data for " + ticker + ".");
+  const historical = dates.map(function (d) { return { date: d, pe: peByDate.get(d), pb: pbByDate.get(d) }; });
+  const last = historical[historical.length - 1];
+  return {
+    ticker: ticker,
+    name: COMPANY_NAMES[ticker] || ticker,
+    isDemo: false,
+    isSynthetic: false,
+    source: "VNDirect",
+    asOf: last.date,
+    currentPE: last.pe,
+    currentPB: last.pb,
+    historical: historical
+  };
+}
+
+/* -------------------- Live price / name / dividends (VNDirect) -------------------- */
+async function fetchCurrentQuote(ticker) {
+  const url = VND_PRICE_API +
+    "?q=code:" + encodeURIComponent(ticker) +
+    "&sort=date:desc&size=1&fields=code,date,close";
+  const res = await fetch(url, { headers: { accept: "application/json" } });
+  if (!res.ok) throw new Error("price API error (HTTP " + res.status + ")");
+  const json = await res.json();
+  const row = (json && Array.isArray(json.data) && json.data[0]) ? json.data[0] : null;
+  if (!row || !isFinite(parseFloat(row.close))) return null;
+  // `close` is quoted in thousands of VND.
+  return { price: Math.round(parseFloat(row.close) * 1000), date: row.date || null };
+}
+
+async function fetchCompanyName(ticker) {
+  const url = VND_STOCK_API +
+    "?q=code:" + encodeURIComponent(ticker) + "&fields=code,companyNameEng";
+  const res = await fetch(url, { headers: { accept: "application/json" } });
+  if (!res.ok) return null;
+  const json = await res.json();
+  const row = (json && Array.isArray(json.data) && json.data[0]) ? json.data[0] : null;
+  return (row && row.companyNameEng) ? row.companyNameEng : null;
+}
+
+async function fetchEventRows(ticker, type) {
+  const url = VND_EVENT_API +
+    "?q=code:" + encodeURIComponent(ticker) + "~type:" + type +
+    "&size=500&fields=code,type,dividend,ratio,divYear,effectiveDate,newsId,locale";
+  const res = await fetch(url, { headers: { accept: "application/json" } });
+  if (!res.ok) throw new Error("events API error (HTTP " + res.status + ")");
+  const json = await res.json();
+  return (json && Array.isArray(json.data)) ? json.data : [];
+}
+
+/* Dividend history (#10–#13). Cash dividends (type DIVIDEND, field
+   `dividend` in VND/share) and stock dividends (type STOCKDIV, field
+   `ratio` as percent of existing shares) are kept SEPARATE — never
+   combined into a single yield. VN/EN duplicates are de-duplicated by
+   newsId (EN_GB preferred). Records sharing a date merge into a single
+   "cash + stock" record. */
+async function fetchDividendHistory(ticker) {
+  const [cashRows, stockRows] = await Promise.all([
+    fetchEventRows(ticker, "DIVIDEND"),
+    fetchEventRows(ticker, "STOCKDIV")
+  ]);
+  const dedupe = function (rows) {
+    const seen = new Map();
+    for (const r of rows) {
+      const d = parseFloat(r.dividend);
+      const rt = parseFloat(r.ratio);
+      const y = Math.round(parseFloat(r.divYear));
+      if (!isFinite(y)) continue;
+      const key = String(r.newsId);
+      const rec = { divYear: y, cash: isFinite(d) ? d : 0, stock: isFinite(rt) ? rt : 0, date: r.effectiveDate || "" };
+      if (seen.has(key)) {
+        const ex = seen.get(key);
+        if (r.locale === "EN_GB") { ex.cash = rec.cash; ex.stock = rec.stock; ex.date = rec.date; }
+      } else {
+        seen.set(key, rec);
+      }
+    }
+    return Array.from(seen.values());
+  };
+  const cashRecs = dedupe(cashRows).map(function (r) {
+    return { date: r.date, divYear: r.divYear, cashDividendPerShare: r.cash, stockDividendPercent: 0 };
+  });
+  const stockRecs = dedupe(stockRows).map(function (r) {
+    return { date: r.date, divYear: r.divYear, cashDividendPerShare: 0, stockDividendPercent: r.stock };
+  });
+  const byKey = new Map();
+  const keyOf = function (r) { return r.date + "|" + r.divYear; };
+  for (const r of cashRecs.concat(stockRecs)) {
+    const k = keyOf(r);
+    if (byKey.has(k)) {
+      const ex = byKey.get(k);
+      ex.cashDividendPerShare += r.cashDividendPerShare;
+      ex.stockDividendPercent += r.stockDividendPercent;
+    } else {
+      byKey.set(k, Object.assign({}, r));
+    }
+  }
+  const records = Array.from(byKey.values())
+    .filter(function (r) { return r.cashDividendPerShare > 0 || r.stockDividendPercent > 0; })
+    .sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : b.divYear - a.divYear; });
+  const agg = summarizeDividends(records);
+  return { records, years: agg.years, summary: agg.summary, earliestRecordYear: agg.earliestRecordYear };
+}
+
+/* -------------------- Live fundamentals (cafef) --------------------
+   Response shape (CORS-open):
+   - balance sheet / cash flow: value.data = groups [{ code, data: [{ time, data: [{code,value}] }] }]
+   - income statement: flat, value.data = [{ time, data: [{code,value}] }]
+   - value.templace carries item names (used for bank detection).
+   TypeTime=NAM periods are years ("2025"); TypeTime=QUY periods are
+   quarters ("Q1-2026"). Values are raw VND.
+   Quarterly income/balance data is per-quarter; quarterly cash flow is
+   cumulative year-to-date and is differenced into standalone quarters. */
+function delay(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+async function fetchCafefReport(baseUrl, ticker, reportType, typeTime, pageSize, attempt) {
+  if (attempt == null) attempt = 0;
+  const url = baseUrl +
+    "?symbol=" + encodeURIComponent(ticker) +
+    "&pageIndex=1&pageSize=" + pageSize +
+    "&reportType=" + reportType + "&TypeTime=" + typeTime;
+  const controller = new AbortController();
+  const timer = setTimeout(function () { controller.abort(); }, CAFEF_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { headers: { accept: "application/json" }, signal: controller.signal });
+    if (!res.ok) throw new Error("cafef " + reportType + " API error (HTTP " + res.status + ")");
+    const json = await res.json();
+    if (!json || !json.isSuccess || !json.value) throw new Error("cafef " + reportType + " returned no data for " + ticker);
+    return json.value;
+  } catch (err) {
+    if (err.name === "AbortError") err = new Error("cafef " + reportType + " timed out after " + (CAFEF_TIMEOUT_MS / 1000) + "s");
+    if (attempt < CAFEF_MAX_ATTEMPTS - 1) {
+      await delay(CAFEF_RETRY_MS * (attempt + 1));
+      return fetchCafefReport(baseUrl, ticker, reportType, typeTime, pageSize, attempt + 1);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/* "Q1-2026" -> { year: 2026, quarter: 1 }; "2025" -> { year: 2025, quarter: 0 } */
+function parsePeriodLabel(time) {
+  const m = /^Q(\d+)-(\d{4})$/.exec(String(time));
+  if (m) return { year: parseInt(m[2], 10), quarter: parseInt(m[1], 10) };
+  return { year: parseInt(String(time), 10), quarter: 0 };
+}
+/* Inverse of parsePeriodLabel: 1, 2026 -> "Q1-2026". */
+function periodLabel(quarter, year) {
+  return "Q" + quarter + "-" + year;
+}
+
+/* Collect one item code across all periods of a grouped report (BS/CF). */
+function collectCodeSeries(value, groupCode, code) {
+  const out = [];
+  const groups = (value && Array.isArray(value.data)) ? value.data : [];
+  for (const grp of groups) {
+    if (groupCode && grp.code !== groupCode) continue;
+    for (const period of (grp.data || [])) {
+      const item = (period.data || []).find((it) => it.code === code);
+      if (!item) continue;
+      const p = parsePeriodLabel(period.time);
+      const v = parseFloat(item.value);
+      if (p.year && isFinite(v)) out.push({ year: p.year, quarter: p.quarter, value: v });
+    }
+  }
+  return out;
+}
+
+/* Collect a flat income-statement report into per-period rows. */
+function collectFlatSeries(value, codes) {
+  const out = [];
+  const periods = (value && Array.isArray(value.data)) ? value.data : [];
+  for (const period of periods) {
+    const p = parsePeriodLabel(period.time);
+    if (!p.year) continue;
+    const row = { year: p.year, quarter: p.quarter, period: String(period.time) };
+    let found = false;
+    for (const item of (period.data || [])) {
+      if (codes.indexOf(item.code) >= 0) {
+        row[item.code] = parseFloat(item.value);
+        found = true;
+      }
+    }
+    if (found) out.push(row);
+  }
+  return out;
+}
+
+/* Periods whose key items are all zero (or absent) are data gaps, not
+   real zero values — they are dropped so charts never mislead. */
+function isPeriodMissing(row, keys) {
+  const found = keys.filter((k) => row[k] !== undefined);
+  if (found.length === 0) return true;
+  return found.every((k) => row[k] === 0);
+}
+
+function seriesToMap(series) {
+  const m = new Map();
+  for (const r of series) m.set(r.year, r.value);
+  return m;
+}
+
+/* Bank detection (#21): the VNDirect `/v4/stocks` API exposes no sector
+   field, so the classification is: known bank ticker list first, then a
+   template-name check for interest income ("Thu nhập lãi ..." /
+   "Net interest income"), which only banks have. The API is preferred
+   whenever it provides a sector; today it does not. */
+function isBankTicker(t) { return BANK_TICKERS.has(String(t).toUpperCase()); }
+function isBankByTemplate(isValue) {
+  const txt = ((isValue && isValue.templace) || [])
+    .map(function (t) { return t.name || ""; })
+    .join(" ");
+  return /thu nhập lãi|net interest income/i.test(txt);
+}
+
+/* -------------------- Fundamental metric builders --------------------
+   METHODOLOGY (also documented inline at each metric):
+   - ROE (banks): net income attributable to the parent (IS 26, fallback
+     21) divided by AVERAGE shareholders' equity (NV_500). Annual: year
+     over average of current & prior year equity. Quarterly: quarterly
+     net income ANNUALIZED (x4) over average of current & prior quarter
+     equity — never raw quarterly earnings against annual equity.
+   - NIM (banks): net interest income (IS 3) over average earning assets
+     (TN 130+140+160+170). Quarterly NII is annualized (x4) for
+     comparability with annual NIM.
+   - Leverage (banks): "Assets / Equity" (TN_300 / NV_500), point-in-time.
+     Regulatory leverage ratio is not exposed by the data providers, so
+     the definition is constant (LEVERAGE_DEFINITION) and clearly
+     labelled; it is never mixed across periods.
+   - NPL (banks): bank-reported ratio from VNDirect ratios
+     (BAD_LOANS_RATIO_AQ, quarterly). If the NPL feed is unavailable the
+     card shows an honest "Data unavailable" state — never fabricated.
+   - ROIC (non-banks): NOPAT / Invested Capital; NOPAT = EBIT(30) x
+     (1 - effective tax rate); effective tax rate = (51 + 52) / 50
+     clamped to [0, 0.35]; IC = equity(400) + ST borrowings(320) +
+     LT borrowings(338) - cash(110). Quarterly EBIT is annualized (x4).
+   - FCF (non-banks): OCF(HDKD_20) + Capex(HDDT_22, negative).
+   - Adjusted FCF (non-banks): FCF + cash dividends received from
+     associates/JVs (HDDT_28 "interest, dividends and profit received"
+     — cash receipts under VAS direct method; the closest available
+     proxy. Only cash actually received is included — never share of
+     profit). If the source already includes those dividends in OCF
+     (per-ticker override), they are NOT added again (no double count).
+   - OCF / Capex (non-banks): standalone quarter = cumulative YTD minus
+     prior quarter's cumulative YTD.
+   - D/E (non-banks): (320 + 338) / 400, point-in-time.
+   Only periods with all required inputs are emitted. */
+
+/* Derive standalone quarterly values from cumulative YTD cash-flow rows.
+   Q1 of each year is standalone by itself; a quarter is dropped when its
+   preceding quarter is missing (cannot be differenced reliably). */
+function deriveStandaloneCumulative(qRows, key) {
+  const out = new Map(); // period -> value
+  const byYear = new Map();
+  for (const r of qRows) {
+    if (!byYear.has(r.year)) byYear.set(r.year, []);
+    byYear.get(r.year).push(r);
+  }
+  for (const year of Array.from(byYear.keys()).sort((a, b) => a - b)) {
+    const qs = byYear.get(year).sort((a, b) => a.quarter - b.quarter);
+    for (let i = 0; i < qs.length; i++) {
+      const q = qs[i];
+      const cum = q[key];
+      if (q.quarter === 1) {
+        out.set(q.period, cum);
+      } else if (i > 0 && qs[i - 1].quarter === q.quarter - 1) {
+        out.set(q.period, cum - qs[i - 1][key]);
+      }
+    }
+  }
+  return out;
+}
+
+function buildCorporateFundamentals(bsAn, isAn, cfAn, bsQ, isQ, cfQ, includeInOcf) {
+  const incOcf = includeInOcf === true;
+  const cash = seriesToMap(collectCodeSeries(bsAn, "TN", "110"));
+  const equity = seriesToMap(collectCodeSeries(bsAn, "NV", "400"));
+  const stB = seriesToMap(collectCodeSeries(bsAn, "NV", "320"));
+  const ltB = seriesToMap(collectCodeSeries(bsAn, "NV", "338"));
+  const isRows = collectFlatSeries(isAn, ["30", "50", "51", "52"]);
+  const ocfMap = seriesToMap(collectCodeSeries(cfAn, null, "HDKD_20"));
+  const capexMap = seriesToMap(collectCodeSeries(cfAn, null, "HDDT_22"));
+  const divMap = seriesToMap(collectCodeSeries(cfAn, null, "HDDT_28"));
+  const yearly = [];
+  for (const r of isRows) {
+    const y = r.year;
+    const ebit = r["30"], ebt = r["50"];
+    const oc = ocfMap.get(y), cp = capexMap.get(y);
+    const eq = equity.get(y);
+    if (!isFinite(ebit) || !isFinite(ebt) || !isFinite(eq) || eq <= 0 || !isFinite(oc) || !isFinite(cp)) continue;
+    const taxCur = isFinite(r["51"]) ? r["51"] : 0;
+    const taxDef = isFinite(r["52"]) ? r["52"] : 0;
+    const taxRate = ebt > 0 ? clamp((taxCur + taxDef) / ebt, 0, 0.35) : 0;
+    const nopat = ebit * (1 - taxRate);
+    const sb = stB.get(y) || 0, lb = ltB.get(y) || 0, ca = cash.get(y) || 0;
+    const ic = eq + sb + lb - ca;
+    if (!isFinite(ic) || ic <= 0) continue;
+    const assocDiv = isFinite(divMap.get(y)) ? Math.max(0, divMap.get(y)) : 0;
+    const fcf = oc + cp;
+    // #7: add associate/JV dividends ONLY if they are not already in OCF.
+    const adjustedFcf = incOcf ? fcf : fcf + assocDiv;
+    yearly.push({
+      year: y, roic: nopat / ic, fcf, adjustedFcf, ocf: oc,
+      capex: Math.abs(cp), de: (sb + lb) / eq, associateJVDividendsReceived: assocDiv
+    });
+  }
+  yearly.sort((a, b) => a.year - b.year);
+
+  /* --- Quarterly --- */
+  const qCash = collectCodeSeries(bsQ, "TN", "110");
+  const qEquity = collectCodeSeries(bsQ, "NV", "400");
+  const qStB = collectCodeSeries(bsQ, "NV", "320");
+  const qLtB = collectCodeSeries(bsQ, "NV", "338");
+  const qEquityByP = new Map(qEquity.map((r) => [periodLabel(r.quarter, r.year), r.value]));
+  const qStByP = new Map(qStB.map((r) => [periodLabel(r.quarter, r.year), r.value]));
+  const qLtByP = new Map(qLtB.map((r) => [periodLabel(r.quarter, r.year), r.value]));
+  const qCashByP = new Map(qCash.map((r) => [periodLabel(r.quarter, r.year), r.value]));
+  const qIsRows = collectFlatSeries(isQ, ["30", "50", "51", "52"])
+    .filter((r) => !isPeriodMissing(r, ["30", "50"]));
+  const qOcfStandalone = deriveStandaloneCumulative(collectCodeSeries(cfQ, null, "HDKD_20").map(function (r) {
+    return { year: r.year, quarter: r.quarter, period: periodLabel(r.quarter, r.year), HDKD_20: r.value };
+  }), "HDKD_20");
+  const qCapexStandalone = deriveStandaloneCumulative(collectCodeSeries(cfQ, null, "HDDT_22").map(function (r) {
+    return { year: r.year, quarter: r.quarter, period: periodLabel(r.quarter, r.year), HDDT_22: r.value };
+  }), "HDDT_22");
+  const qDivStandalone = deriveStandaloneCumulative(collectCodeSeries(cfQ, null, "HDDT_28").map(function (r) {
+    return { year: r.year, quarter: r.quarter, period: periodLabel(r.quarter, r.year), HDDT_28: r.value };
+  }), "HDDT_28");
+  const quarterly = [];
+  for (const r of qIsRows) {
+    const p = periodLabel(r.quarter, r.year);
+    const eq = qEquityByP.get(p);
+    const oc = qOcfStandalone.get(p);
+    const cp = qCapexStandalone.get(p);
+    if (!isFinite(eq) || eq <= 0 || oc === undefined || cp === undefined) continue;
+    const taxCur = isFinite(r["51"]) ? r["51"] : 0;
+    const taxDef = isFinite(r["52"]) ? r["52"] : 0;
+    const taxRate = isFinite(r["50"]) && r["50"] > 0 ? clamp((taxCur + taxDef) / r["50"], 0, 0.35) : 0;
+    // Quarterly EBIT annualized (x4) for comparability with annual ROIC.
+    const nopatQ = r["30"] * 4 * (1 - taxRate);
+    const sb = qStByP.get(p) || 0, lb = qLtByP.get(p) || 0, ca = qCashByP.get(p) || 0;
+    const ic = eq + sb + lb - ca;
+    if (!isFinite(ic) || ic <= 0) continue;
+    const assocDiv = Math.max(0, qDivStandalone.get(p) || 0);
+    const fcf = oc + cp;
+    const adjustedFcf = incOcf ? fcf : fcf + assocDiv;
+    quarterly.push({
+      year: r.year, quarter: r.quarter, period: p,
+      roic: nopatQ / ic, fcf, adjustedFcf, ocf: oc,
+      capex: Math.abs(cp), de: (sb + lb) / eq, associateJVDividendsReceived: assocDiv
+    });
+  }
+  quarterly.sort((a, b) => a.year - b.year || a.quarter - b.quarter);
+  return { type: "corporate", yearly: { rows: yearly }, quarterly: { rows: quarterly } };
+}
+
+function buildBankFundamentals(bsAn, isAn, bsQ, isQ, nplSeries) {
+  const deposits = seriesToMap(collectCodeSeries(bsAn, "TN", "130"));
+  const trading = seriesToMap(collectCodeSeries(bsAn, "TN", "140"));
+  const loans = seriesToMap(collectCodeSeries(bsAn, "TN", "160"));
+  const invSec = seriesToMap(collectCodeSeries(bsAn, "TN", "170"));
+  const totalAssets = seriesToMap(collectCodeSeries(bsAn, "TN", "300"));
+  const equity = seriesToMap(collectCodeSeries(bsAn, "NV", "500"));
+  const eaOf = function (m130, m140, m160, m170, y) {
+    return (m130.get(y) || 0) + (m140.get(y) || 0) + (m160.get(y) || 0) + (m170.get(y) || 0);
+  };
+  /* cafef zero-fills the parent-company profit line (26) for older
+     periods; fall back to total net profit (21) when 26 is missing or
+     zero (minority interest is ~0 for VN banks). Exact zeros are treated
+     as missing (a bank quarter with exactly zero net profit is a data
+     gap, not a real value). */
+  const npatOf = function (r) {
+    const v26 = isFinite(r["26"]) ? r["26"] : NaN;
+    const v21 = isFinite(r["21"]) ? r["21"] : NaN;
+    return (isFinite(v26) && v26 !== 0) ? v26 : v21;
+  };
+  /* NPL (VNDirect ratios, BAD_LOANS_RATIO_AQ): quarterly report dates,
+     fractions. Latest reportDate wins per quarter; annual rows take the
+     latest reported quarter of each year (never interpolated). */
+  const nplByQ = new Map();
+  const nplByYear = new Map();
+  for (const n of (nplSeries || [])) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(n.date));
+    if (!m || !isFinite(n.value)) continue;
+    const y = parseInt(m[1], 10);
+    const q = Math.floor((parseInt(m[2], 10) - 1) / 3) + 1;
+    const p = periodLabel(q, y);
+    nplByQ.set(p, n.value);
+    nplByYear.set(y, { value: n.value, asOf: p });
+  }
+  const nplAvailable = nplByQ.size > 0;
+  const isRows = collectFlatSeries(isAn, ["3", "21", "26"]);
+  const yearly = [];
+  const sortedYears = Array.from(new Set([...equity.keys(), ...totalAssets.keys()])).sort((a, b) => a - b);
+  for (let i = 0; i < sortedYears.length; i++) {
+    const y = sortedYears[i];
+    const r = isRows.find((x) => x.year === y);
+    const eq = equity.get(y);
+    const ta = totalAssets.get(y);
+    if (!r || !isFinite(eq) || eq <= 0 || !isFinite(ta)) continue;
+    const eqPrev = i > 0 ? equity.get(sortedYears[i - 1]) : null;
+    // ROE: net income of the parent (26, fallback 21) / AVERAGE equity.
+    const npat = npatOf(r);
+    if (!isFinite(npat) || npat === 0) continue;
+    const avgEq = (isFinite(eqPrev) && eqPrev > 0) ? (eq + eqPrev) / 2 : eq;
+    const eaCur = eaOf(deposits, trading, loans, invSec, y);
+    const eaPrev = i > 0 ? eaOf(deposits, trading, loans, invSec, sortedYears[i - 1]) : null;
+    const avgEa = (isFinite(eaPrev) && eaPrev > 0) ? (eaCur + eaPrev) / 2 : eaCur;
+    if (!isFinite(eaCur) || eaCur <= 0) continue;
+    const nplY = nplByYear.get(y);
+    yearly.push({
+      year: y,
+      roe: npat / avgEq,
+      nim: r["3"] / avgEa,
+      npl: nplY ? nplY.value : null,          // #2: real NPL from VNDirect ratios
+      nplAsOf: nplY ? nplY.asOf : null,
+      leverageRatio: ta / eq, // #3: clearly labelled "Assets / Equity"
+      nii: r["3"], ea: eaCur, totalAssets: ta, equity: eq
+    });
+  }
+  yearly.sort((a, b) => a.year - b.year);
+
+  /* --- Quarterly (ROE/NIM annualized; leverage point-in-time) --- */
+  const qDep = collectCodeSeries(bsQ, "TN", "130");
+  const qTrad = collectCodeSeries(bsQ, "TN", "140");
+  const qLoans = collectCodeSeries(bsQ, "TN", "160");
+  const qInv = collectCodeSeries(bsQ, "TN", "170");
+  const qTa = collectCodeSeries(bsQ, "TN", "300");
+  const qEq = collectCodeSeries(bsQ, "NV", "500");
+  const byP = function (series) { return new Map(series.map((r) => [periodLabel(r.quarter, r.year), r.value])); };
+  const qEqByP = byP(qEq);
+  const qTaByP = byP(qTa);
+  const qDepByP = byP(qDep), qTradByP = byP(qTrad), qLoansByP = byP(qLoans), qInvByP = byP(qInv);
+  const qIsRows = collectFlatSeries(isQ, ["3", "21", "26"])
+    .filter((r) => !isPeriodMissing(r, ["3"]));
+  const qPeriods = Array.from(new Set([...qEqByP.keys(), ...qTaByP.keys()])).sort(function (a, b) {
+    const pa = parsePeriodLabel(a), pb = parsePeriodLabel(b);
+    return pa.year - pb.year || pa.quarter - pb.quarter;
+  });
+  const quarterly = [];
+  for (let i = 0; i < qPeriods.length; i++) {
+    const p = qPeriods[i];
+    const r = qIsRows.find((x) => periodLabel(x.quarter, x.year) === p);
+    const eq = qEqByP.get(p);
+    const ta = qTaByP.get(p);
+    if (!r || !isFinite(eq) || eq <= 0 || !isFinite(ta)) continue;
+    const npat = npatOf(r);
+    if (!isFinite(npat) || npat === 0) continue;
+    const eqPrev = i > 0 ? qEqByP.get(qPeriods[i - 1]) : null;
+    const avgEq = (isFinite(eqPrev) && eqPrev > 0) ? (eq + eqPrev) / 2 : eq;
+    const eaCur = (qDepByP.get(p) || 0) + (qTradByP.get(p) || 0) + (qLoansByP.get(p) || 0) + (qInvByP.get(p) || 0);
+    const eaPrev = i > 0
+      ? (qDepByP.get(qPeriods[i - 1]) || 0) + (qTradByP.get(qPeriods[i - 1]) || 0) + (qLoansByP.get(qPeriods[i - 1]) || 0) + (qInvByP.get(qPeriods[i - 1]) || 0)
+      : null;
+    const avgEa = (isFinite(eaPrev) && eaPrev > 0) ? (eaCur + eaPrev) / 2 : eaCur;
+    if (eaCur <= 0) continue;
+    quarterly.push({
+      year: r.year, quarter: r.quarter, period: p,
+      roe: (npat * 4) / avgEq,          // quarterly earnings annualized (x4)
+      nim: (r["3"] * 4) / avgEa,        // quarterly NII annualized (x4)
+      npl: nplByQ.has(p) ? nplByQ.get(p) : null,
+      leverageRatio: ta / eq,           // point-in-time, same definition as annual
+      nii: r["3"], ea: eaCur, totalAssets: ta, equity: eq
+    });
+  }
+  quarterly.sort((a, b) => a.year - b.year || a.quarter - b.quarter);
+  return {
+    type: "bank",
+    nplAvailable: nplAvailable,
+    nplUnavailable: NPL_UNAVAILABLE_REASON,
+    leverageDefinition: LEVERAGE_DEFINITION,
+    leverageLabel: LEVERAGE_LABEL,
+    yearly: { rows: yearly },
+    quarterly: { rows: quarterly }
+  };
+}
+
+/* -------------------- Data service layer -------------------- */
+function validateTicker(ticker) {
+  const t = String(ticker || "").trim().toUpperCase();
+  if (!/^[A-Z0-9]{2,7}$/.test(t)) {
+    throw new Error("Invalid ticker format. Use 2–7 letters/numbers, e.g. TPB, ACB, VNINDEX.");
+  }
+  return t;
+}
+
+/* Valuation-only entry point (kept for compatibility with the analysis
+   pipeline and tests). */
+async function getStockValuation(ticker, period) {
+  const clean = validateTicker(ticker);
+  let liveError = null;
+  if (USE_LIVE_DATA) {
+    try {
+      const live = await fetchLiveValuation(clean);
+      if (live.historical.length === 0) throw new Error("empty series");
+      return live;
+    } catch (err) {
+      liveError = (err && err.message) ? err.message : String(err);
+      console.warn("Live data failed for " + clean + ":", err);
+    }
+  }
+  const demo = await MockDataProvider.getValuation(clean);
+  demo.isDemo = true;
+  demo.fallbackReason = liveError || "live data disabled";
+  return demo;
+}
+
+/* Single entry point used by the UI: valuation + price + dividend
+   history + fundamentals (yearly + quarterly). */
+async function getStockData(ticker, period) {
+  const clean = validateTicker(ticker);
+  let liveError = null;
+  if (USE_LIVE_DATA) {
+    try {
+      const live = await fetchLiveStockData(clean);
+      if (!live || !Array.isArray(live.historical) || live.historical.length === 0) {
+        throw new Error("empty series");
+      }
+      return live;
+    } catch (err) {
+      liveError = (err && err.message) ? err.message : String(err);
+      console.warn("Live data failed for " + clean + ":", err);
+    }
+  }
+  const demo = await MockDataProvider.getStockData(clean);
+  demo.isDemo = true;
+  demo.fallbackReason = liveError || "live data disabled";
+  return demo;
+}
+
+async function fetchLiveStockData(ticker) {
+  const valuation = await fetchLiveValuation(ticker);
+  const isIndex = INDEX_TICKERS.indexOf(ticker) >= 0;
+  const result = Object.assign({}, valuation, {
+    isIndex,
+    price: null, dividendHistory: null, dividendSummary: null,
+    sector: null, fundamentals: null, fundUnavailable: null
+  });
+  if (isIndex) return result;
+
+  const [price, dividendData] = await Promise.all([
+    fetchCurrentQuote(ticker).catch(function () { return null; }),
+    fetchDividendHistory(ticker).catch(function () { return null; })
+  ]);
+  result.price = price;
+  if (dividendData) {
+    result.dividendHistory = dividendData.records;
+    result.dividendSummary = dividendData.summary;
+  }
+
+  if (valuation.name === ticker) {
+    try {
+      const n = await fetchCompanyName(ticker);
+      if (n) result.name = n;
+    } catch (e) { /* keep ticker as name */ }
+  }
+
+  try {
+    const settled = await Promise.allSettled([
+      fetchCafefReport(CAFEF_BS_API, ticker, "ALL", "NAM", 10),
+      fetchCafefReport(CAFEF_IS_API, ticker, "KQKD", "NAM", 10),
+      fetchCafefReport(CAFEF_CF_API, ticker, "ALL", "NAM", 10)
+    ]);
+    const bs = settled[0].status === "fulfilled" ? settled[0].value : null;
+    const is = settled[1].status === "fulfilled" ? settled[1].value : null;
+    const cf = settled[2].status === "fulfilled" ? settled[2].value : null;
+    if (!bs || !is) {
+      const reasons = [];
+      if (settled[0].status === "rejected") reasons.push(settled[0].reason && settled[0].reason.message);
+      if (settled[1].status === "rejected") reasons.push(settled[1].reason && settled[1].reason.message);
+      const why = reasons.filter(Boolean).join("; ");
+      throw new Error("cafef balance sheet / income statement unavailable" + (why ? " (" + why + ")" : ""));
+    }
+    const bank = isBankTicker(ticker) || isBankByTemplate(is);
+    result.sector = bank ? "bank" : "corporate";
+    let fund = null;
+    if (bank) {
+      const settledQ = await Promise.allSettled([
+        fetchCafefReport(CAFEF_BS_API, ticker, "ALL", "QUY", 40),
+        fetchCafefReport(CAFEF_IS_API, ticker, "KQKD", "QUY", 40),
+        fetchNplSeries(ticker).catch(function () { return null; })
+      ]);
+      const bsQ = settledQ[0].status === "fulfilled" ? settledQ[0].value : null;
+      const isQ = settledQ[1].status === "fulfilled" ? settledQ[1].value : null;
+      const nplSeries = settledQ[2].status === "fulfilled" ? settledQ[2].value : null;
+      fund = buildBankFundamentals(bs, is, bsQ, isQ, nplSeries);
+    } else {
+      const settledQ = await Promise.allSettled([
+        fetchCafefReport(CAFEF_BS_API, ticker, "ALL", "QUY", 40),
+        fetchCafefReport(CAFEF_IS_API, ticker, "KQKD", "QUY", 40),
+        fetchCafefReport(CAFEF_CF_API, ticker, "ALL", "QUY", 40)
+      ]);
+      const bsQ = settledQ[0].status === "fulfilled" ? settledQ[0].value : null;
+      const isQ = settledQ[1].status === "fulfilled" ? settledQ[1].value : null;
+      const cfQ = settledQ[2].status === "fulfilled" ? settledQ[2].value : null;
+      fund = buildCorporateFundamentals(bs, is, cf, bsQ, isQ, cfQ, associateDivsIncludedInOcf(ticker));
+    }
+    if (fund && fund.yearly && fund.yearly.rows && fund.yearly.rows.length >= MIN_FUND_ROWS) {
+      result.fundamentals = fund;
+    } else {
+      result.fundUnavailable = "Financial statements for " + ticker + " lack usable annual data.";
+    }
+  } catch (err) {
+    console.warn("Financial statements failed for " + ticker + ":", err);
+    result.fundUnavailable = "Financial statements unavailable (" +
+      ((err && err.message) || "network error") + ").";
+    result.sector = isBankTicker(ticker) ? "bank" : "corporate";
+  }
+  return result;
+}
+
+/* -------------------- Analysis --------------------
+   Overall assessment: transparent scoring where each metric scores
+   +1 (Cheap vs median), 0 (Fair) or -1 (Expensive vs median).
+   Combined score drives the 5-level verdict; the historical
+   percentile refines it into "Very Attractive / Very Expensive". */
+function assessValuation(pe, pb) {
+  const peStatus = pe.status;
+  const pbStatus = pb.status;
+  let score = 0;
+  if (peStatus.status === "Cheap") score += 1;
+  if (peStatus.status === "Expensive") score -= 1;
+  if (pbStatus.status === "Cheap") score += 1;
+  if (pbStatus.status === "Expensive") score -= 1;
+  const pct = mean([pe.stats.percentile, pb.stats.percentile].filter(isFinite));
+  let label, tone;
+  if (score >= 2 && isFinite(pct) && pct < 20) { label = "Very Attractive"; tone = "green"; }
+  else if (score >= 1) { label = "Attractive"; tone = "green"; }
+  else if (score === 0) { label = "Fairly Valued"; tone = "amber"; }
+  else if (score === -1) { label = "Expensive"; tone = "orange"; }
+  else if (score <= -2 && isFinite(pct) && pct > 80) { label = "Very Expensive"; tone = "red"; }
+  else { label = "Expensive"; tone = "red"; }
+  return { label, tone, score, peStatus, pbStatus };
+}
+
+function buildAnalysis(data, period) {
+  const windowData = sliceByPeriod(data.historical, period);
+  const peClean = cleanSeries(windowData, "pe", PE_OUTLIER_CAP);
+  const pbClean = cleanSeries(windowData, "pb", null);
+  const peStats = computeSeriesStats(peClean.values, data.currentPE);
+  const pbStats = computeSeriesStats(pbClean.values, data.currentPB);
+  const makeMetric = (cleanObj, stats, current) => ({
+    current,
+    points: cleanObj.points,
+    values: cleanObj.values,
+    excluded: cleanObj.excluded,
+    stats,
+    status: metricStatus(current, stats.median, stats.mean),
+    discountVsAvg: discount(stats.mean, current),
+    discountVsMedian: discount(stats.median, current)
+  });
+  const pe = makeMetric(peClean, peStats, data.currentPE);
+  const pb = makeMetric(pbClean, pbStats, data.currentPB);
+  return {
+    ticker: data.ticker,
+    name: data.name,
+    isSynthetic: !!data.isSynthetic,
+    period,
+    periodLabel: PERIOD_LABELS[period] || "Selected period",
+    window: windowData,
+    pe,
+    pb,
+    insufficient: peStats.count < MIN_OBSERVATIONS || pbStats.count < MIN_OBSERVATIONS,
+    assessment: assessValuation(pe, pb)
+  };
+}
+
+/* -------------------- Rendering helpers -------------------- */
+function toneOfStatus(s) {
+  if (s.status === "Cheap") return "green";
+  if (s.status === "Expensive") return "red";
+  return "amber";
+}
+function relBullet(reference, current, refName) {
+  const r = relText(reference, current);
+  return '<li class="' + r.cls + '">' + r.text + " vs " + refName + "</li>";
+}
+function statusPill(s) {
+  return '<span class="hm-status ' + toneOfStatus(s) + '">' + s.status.toUpperCase() + "</span>";
+}
+
+function heroMetricHTML(metric, label) {
+  const s = metric.status;
+  const curTxt = isFinite(metric.current)
+    ? fmtNum(metric.current, 2) + '<span class="hm-unit">x</span>' : "—";
+  const vsAvg = relText(metric.stats.mean, metric.current);
+  const vsMed = relText(metric.stats.median, metric.current);
+  return '<div class="hm-label">Current ' + label + '</div>' +
+    '<div class="hm-value">' + curTxt + "</div>" +
+    statusPill(s) +
+    '<div class="hm-vs ' + vsAvg.cls + '">' + vsAvg.text + " vs average</div>" +
+    '<div class="hm-vs ' + vsMed.cls + '">' + vsMed.text + " vs median</div>";
+}
+
+function renderHero(an) {
+  document.getElementById("heroPe").innerHTML = heroMetricHTML(an.pe, "P/E");
+  document.getElementById("heroPb").innerHTML = heroMetricHTML(an.pb, "P/B");
+  const a = an.assessment;
+  document.getElementById("overallBadge").className = "assess-badge tone-" + a.tone;
+  document.getElementById("overallBadge").textContent = a.label;
+  const word = (s) => s.status === "Cheap" ? "below" : s.status === "Expensive" ? "above" : "in line with";
+  let sentence;
+  if (an.insufficient) {
+    sentence = "Insufficient historical data to produce a reliable valuation assessment.";
+  } else if (a.peStatus.status === a.pbStatus.status) {
+    sentence = (an.name || an.ticker) + " is currently trading " + word(a.peStatus) +
+      " its historical P/E and P/B levels.";
+  } else {
+    sentence = (an.name || an.ticker) + " is currently trading " + word(a.peStatus) +
+      " its historical P/E level and " + word(a.pbStatus) + " its historical P/B level.";
+  }
+  document.getElementById("heroSentence").textContent = sentence;
+}
+
+/* -------------------- Price & dividend cards -------------------- */
+function renderPriceCard(data) {
+  const el = document.getElementById("priceCard");
+  if (!data.price || !isFinite(data.price.price)) {
+    el.innerHTML = '<div class="hm-label">Current Price</div>' +
+      '<div class="hm-value hm-big">—</div>' +
+      '<div class="hm-note">Price data unavailable</div>';
+    return;
+  }
+  el.innerHTML = '<div class="hm-label">Current Price</div>' +
+    '<div class="hm-value hm-big">' + fmtVND(data.price.price) + "</div>" +
+    '<div class="hm-note">Last available price · Updated ' +
+    (data.price.date ? fmtFullDate(data.price.date) : "recently") + "</div>";
+}
+
+/* Dividend History hero card (#10). Cash and stock are shown as separate
+   figures — they are never combined into a single yield. */
+function renderDividendCard(data) {
+  const el = document.getElementById("dividendCard");
+  const d = data.dividendSummary;
+  const hasCash = d && d.lastCashDps > 0;
+  const hasStock = d && d.lastStockPct > 0;
+  if (!hasCash && !hasStock) {
+    el.innerHTML = '<div class="hm-label">Dividend History</div>' +
+      '<div class="hm-value hm-big">—</div>' +
+      '<div class="hm-note">Dividend data unavailable</div>';
+    return;
+  }
+  let main, note;
+  if (hasCash) {
+    main = fmtVND(d.lastCashDps);
+    note = "Last cash dividend · FY " + d.lastCashYear;
+    if (hasStock) {
+      note = "Cash " + fmtVND(d.lastCashDps) + " (FY " + d.lastCashYear +
+        ") + stock " + d.lastStockPct + "% (FY " + d.lastStockYear + ")";
+    }
+  } else {
+    main = d.lastStockPct + "%";
+    note = "Last stock dividend · FY " + d.lastStockYear;
+  }
+  el.innerHTML = '<div class="hm-label">Dividend History</div>' +
+    '<div class="hm-value hm-big">' + main + "</div>" +
+    '<div class="hm-note">' + note + " · see Dividend History below</div>";
+}
+
+/* -------------------- Fundamentals section -------------------- */
+let charts = { pe: null, pb: null, fund: [] };
+function destroyValuationCharts() {
+  if (charts.pe) { try { charts.pe.destroy(); } catch (e) {} charts.pe = null; }
+  if (charts.pb) { try { charts.pb.destroy(); } catch (e) {} charts.pb = null; }
+}
+function destroyFundCharts() {
+  charts.fund.forEach(function (c) { try { c.destroy(); } catch (e) {} });
+  charts.fund = [];
+}
+function destroyCharts() { destroyValuationCharts(); destroyFundCharts(); }
+
+function insightChange(label, a, b, fmt) {
+  if (!isFinite(a) || !isFinite(b)) return "";
+  return label + " has " + (b >= a ? "improved" : "deteriorated") +
+    " from " + fmt(a) + " to " + fmt(b) + " over the shown period.";
+}
+function insightLevel(label, a, b, fmt) {
+  if (!isFinite(a) || !isFinite(b)) return "";
+  return label + " has " + (b >= a ? "risen" : "fallen") +
+    " from " + fmt(a) + " to " + fmt(b) + " over the shown period.";
+}
+function fundCard(title, valueHtml, chartHtml, insightHtml) {
+  return '<div class="fund-card">' +
+    '<div class="fund-head"><div class="fund-title">' + title + "</div></div>" +
+    '<div class="fund-value">' + valueHtml + "</div>" +
+    chartHtml +
+    '<div class="fund-insight">' + insightHtml + "</div></div>";
+}
+function fundChartHtml(id) {
+  return '<div class="fund-chart"><canvas id="' + id + '"></canvas></div>';
+}
+
+function makeFundChart(canvasId, labels, values, fmt, color, p) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || typeof Chart === "undefined") return null;
+  const g2d = canvas.getContext("2d");
+  const h = Math.max((canvas.parentElement && canvas.parentElement.clientHeight) || 150, 60);
+  const grad = g2d.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, hexToRgba(color, 0.22));
+  grad.addColorStop(1, hexToRgba(color, 0.02));
+  const chart = new Chart(canvas, {
+    type: "line",
+    data: { labels: labels, datasets: [{
+      data: values, borderColor: color, backgroundColor: grad,
+      borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 8,
+      tension: 0.3, fill: true
+    }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "rgba(10, 15, 30, 0.94)",
+          titleColor: "#e6edf7",
+          bodyColor: "#cbd5e1",
+          borderColor: "rgba(255,255,255,0.12)",
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: function (ctx) { return " " + fmt(ctx.raw); }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: p.text, maxTicksLimit: 6, maxRotation: 0 },
+          grid: { color: p.grid }
+        },
+        y: {
+          ticks: { color: p.text, callback: function (v) { return fmt(v); } },
+          grid: { color: p.grid }
+        }
+      }
+    }
+  });
+  return chart;
+}
+
+/* Dual-series chart for Standard vs Adjusted FCF (#6). */
+function makeFundDualChart(canvasId, labels, valuesA, valuesB, fmt, colorA, colorB, p) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || typeof Chart === "undefined") return null;
+  const chart = new Chart(canvas, {
+    type: "line",
+    data: { labels: labels, datasets: [
+      { label: "Standard FCF", data: valuesA, borderColor: colorA,
+        backgroundColor: hexToRgba(colorA, 0.06), borderWidth: 1.5,
+        pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 8, tension: 0.3, fill: false },
+      { label: "Adjusted FCF", data: valuesB, borderColor: colorB,
+        backgroundColor: hexToRgba(colorB, 0.10), borderWidth: 2,
+        pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 8, tension: 0.3, fill: true }
+    ] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "top", labels: { usePointStyle: true, pointStyle: "line", color: p.text, boxWidth: 24 } },
+        tooltip: {
+          backgroundColor: "rgba(10, 15, 30, 0.94)",
+          titleColor: "#e6edf7",
+          bodyColor: "#cbd5e1",
+          borderColor: "rgba(255,255,255,0.12)",
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: function (ctx) { return " " + ctx.dataset.label + ": " + fmt(ctx.raw); }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: p.text, maxTicksLimit: 6, maxRotation: 0 },
+          grid: { color: p.grid }
+        },
+        y: {
+          ticks: { color: p.text, callback: function (v) { return fmt(v); } },
+          grid: { color: p.grid }
+        }
+      }
+    }
+  });
+  return chart;
+}
+
+/* Fund panel body. Sector-adaptive (#4): banks show ROE, NIM, an honest
+   NPL "Data unavailable" card and leverage; corporates show ROIC,
+   Adjusted FCF (dual chart), OCF, Capex and D/E. Yearly/Quarterly toggle
+   (state.fundPeriod) switches between the two pre-built datasets. */
+function renderFundSection(data) {
+  const body = document.getElementById("fundBody");
+  const f = data.fundamentals;
+  const period = state.fundPeriod === "quarterly" ? "quarterly" : "yearly";
+  if (f) {
+    const title = f.type === "bank" ? "Bank Operating Metrics" : "Business & Cash Flow";
+    document.getElementById("fundTitle").innerHTML =
+      title + ' <span class="pill-info">' +
+      (period === "quarterly" ? "Quarterly · Latest quarters" : "Annual · Latest fiscal years") + "</span>";
+  } else {
+    document.getElementById("fundTitle").innerHTML = "Fundamental Analysis";
+  }
+  if (!f) {
+    body.innerHTML = '<div class="fund-unavail"><b>Data unavailable.</b> ' +
+      (data.fundUnavailable || "Financial statements could not be loaded.") + "</div>";
+    return;
+  }
+  destroyFundCharts();
+  const p = chartPalette();
+  const rows = f[period].rows;
+  if (!rows || rows.length < MIN_FUND_ROWS) {
+    body.innerHTML = '<div class="fund-unavail"><b>Data unavailable.</b> ' +
+      "Financial statements for " + data.ticker + " lack usable " + period + " data.</div>";
+    return;
+  }
+  const labels = rows.map(function (r) { return period === "quarterly" ? r.period : String(r.year); });
+  const last = rows[rows.length - 1];
+  const first = rows[0];
+  const mk = function (id, values, fmt, color) {
+    const c = makeFundChart(id, labels, values, fmt, color, p);
+    if (c) charts.fund.push(c);
+  };
+  const mkDual = function (id, a, b, fmt, colorA, colorB) {
+    const c = makeFundDualChart(id, labels, a, b, fmt, colorA, colorB, p);
+    if (c) charts.fund.push(c);
+  };
+  if (f.type === "bank") {
+    const levTitle = "Leverage (" + f.leverageLabel + ")";
+    const lastNpl = last.npl != null ? pct2(last.npl) : '<span class="fund-value na">Data unavailable</span>';
+    const nplInsight = last.npl != null
+      ? insightLevel("NPL", first.npl, last.npl, pct2) +
+        '<div class="fund-subtitle">As of ' + (last.nplAsOf || "latest quarter") +
+        " · bank-reported, quarterly</div>"
+      : f.nplUnavailable;
+    body.innerHTML = '<div class="fund-grid">' +
+      fundCard("Return on Equity (ROE)",
+        pct2(last.roe),
+        fundChartHtml("fundChartRoe"),
+        insightChange("ROE", first.roe, last.roe, pct2)) +
+      fundCard("Net Interest Margin (NIM)",
+        pct2(last.nim),
+        fundChartHtml("fundChartNim"),
+        insightChange("NIM", first.nim, last.nim, pct2)) +
+      fundCard("Non-Performing Loans (NPL)",
+        lastNpl,
+        fundChartHtml("fundChartNpl"),
+        nplInsight) +
+      fundCard(levTitle,
+        x2(last.leverageRatio),
+        fundChartHtml("fundChartLev"),
+        insightLevel("Leverage", first.leverageRatio, last.leverageRatio, x2) +
+        '<div class="fund-subtitle">' + f.leverageLabel + " · point-in-time balance-sheet ratio</div>") +
+      "</div>";
+    mk("fundChartRoe", rows.map(function (r) { return r.roe; }), pct2, p.line);
+    mk("fundChartNim", rows.map(function (r) { return r.nim; }), pct2, p.cur);
+    mk("fundChartNpl", rows.map(function (r) { return r.npl; }), pct2, p.red);
+    mk("fundChartLev", rows.map(function (r) { return r.leverageRatio; }), x2, p.med);
+  } else {
+    const incOcf = associateDivsIncludedInOcf(data.ticker);
+    const fcfInsight = incOcf
+      ? "OCF " + fmtBn(last.ocf) + " − Capex " + fmtBn(last.capex) +
+        " = " + fmtBn(last.adjustedFcf) + " (associate/JV dividends are already inside OCF — not added again)"
+      : "OCF " + fmtBn(last.ocf) + " − Capex " + fmtBn(last.capex) +
+        " + associate/JV dividends " + fmtBn(last.associateJVDividendsReceived) +
+        " = " + fmtBn(last.adjustedFcf);
+    body.innerHTML = '<div class="fund-grid">' +
+      fundCard("Return on Invested Capital (ROIC)",
+        pct1(last.roic),
+        fundChartHtml("fundChartRoic"),
+        insightChange("ROIC", first.roic, last.roic, pct1)) +
+      fundCard("Adjusted Free Cash Flow",
+        fmtBn(last.adjustedFcf),
+        fundChartHtml("fundChartAdjFcf"),
+        fcfInsight) +
+      fundCard("Operating Cash Flow",
+        fmtBn(last.ocf),
+        fundChartHtml("fundChartOcf"),
+        insightLevel("OCF", first.ocf, last.ocf, fmtBn)) +
+      fundCard("Capital Expenditure",
+        fmtBn(last.capex),
+        fundChartHtml("fundChartCapex"),
+        insightLevel("Capex", first.capex, last.capex, fmtBn)) +
+      fundCard("Debt / Equity",
+        x2(last.de),
+        fundChartHtml("fundChartDe"),
+        insightLevel("Leverage", first.de, last.de, x2)) +
+      fundCard("Adjusted FCF Methodology",
+        '<span class="fund-value na">' + (incOcf
+          ? "OCF − Capex; associate/JV dividends are already reported inside OCF for this company and are not added again (no double counting)."
+          : "OCF − Capex + associate/JV cash dividends received (cash receipts only — never share of profit).") + "</span>",
+        "",
+        (period === "quarterly"
+          ? "Quarterly rows are standalone quarters: cumulative YTD cash flow is differenced into quarters; ROIC-type rates are annualized (×4); D/E is point-in-time."
+          : "Annual rows are the latest reported fiscal years.")) +
+      "</div>";
+    mk("fundChartRoic", rows.map(function (r) { return r.roic; }), pct1, p.line);
+    mkDual("fundChartAdjFcf",
+      rows.map(function (r) { return r.fcf; }),
+      rows.map(function (r) { return r.adjustedFcf; }),
+      fmtBn, p.avg, p.cur);
+    mk("fundChartOcf", rows.map(function (r) { return r.ocf; }), fmtBn, p.line);
+    mk("fundChartCapex", rows.map(function (r) { return r.capex; }), fmtBn, p.med);
+    mk("fundChartDe", rows.map(function (r) { return r.de; }), x2, p.med);
+  }
+}
+
+/* -------------------- Dividend history section -------------------- */
+function renderDividendSection(data) {
+  const body = document.getElementById("dividendBody");
+  const recs = data.dividendHistory;
+  if (!recs || recs.length === 0) {
+    body.innerHTML = '<div class="fund-unavail"><b>Data unavailable.</b> ' +
+      "No dividend records were found for " + data.ticker + ".</div>";
+    return;
+  }
+  const agg = summarizeDividends(recs);
+  const s = agg.summary;
+  const years = agg.years.slice().sort(function (a, b) { return b.year - a.year; });
+  const item = function (label, valueHtml, noteHtml) {
+    return '<div class="div-sum-item"><div class="div-sum-label">' + label + "</div>" +
+      '<div class="div-sum-value">' + valueHtml + "</div>" +
+      '<div class="div-sum-note">' + noteHtml + "</div></div>";
+  };
+  let html = '<div class="div-summary">';
+  if (s && s.lastCashDps > 0) {
+    html += item("Last Cash Dividend", fmtVND(s.lastCashDps), "Paid for FY " + s.lastCashYear);
+  } else {
+    html += item("Last Cash Dividend", "—", "No cash dividend in the records");
+  }
+  if (s && s.lastStockPct > 0) {
+    html += item("Last Stock Dividend", s.lastStockPct + "%",
+      "Paid for FY " + s.lastStockYear + " — stock, shown separately (never converted to VND)");
+  } else {
+    html += item("Last Stock Dividend", "—", "No stock dividend in the records");
+  }
+  if (s && s.trend) {
+    const arrow = s.trend === "up" ? "↑ " : s.trend === "down" ? "↓ " : "→ ";
+    const word = s.trend === "up" ? "Rising" : s.trend === "down" ? "Falling" : "Stable";
+    const cls = s.trend === "up" ? "trend-up" : s.trend === "down" ? "trend-down" : "trend-flat";
+    html += item("Cash Dividend Trend", '<span class="' + cls + '">' + arrow + word + "</span>",
+      "Latest two cash-dividend years");
+  } else {
+    html += item("Cash Dividend Trend", '<span class="trend-flat">—</span>',
+      "Fewer than two cash-dividend years on record");
+  }
+  if (s && s.lastCashDps > 0) {
+    const note = s.consistencyComplete
+      ? "Consecutive cash years through FY " + s.lastCashYear +
+        " (records span FY " + agg.earliestRecordYear + "–FY " + years[0].year + ")"
+      : "Consecutive cash years through FY " + s.lastCashYear +
+        " — the record begins at FY " + agg.earliestRecordYear +
+        ", so the full history may be longer";
+    html += item("Consistency", s.consistencyYears + " yrs", note);
+  } else {
+    html += item("Consistency", "—", "No cash dividend on record");
+  }
+  html += "</div>";
+  html += '<div class="div-table-wrap"><table><thead><tr>' +
+    "<th>Year</th>" +
+    '<th class="num">Cash Dividend (VND/share)</th>' +
+    '<th class="num">Stock Dividend (%)</th></tr></thead><tbody>';
+  for (const y of years) {
+    html += "<tr><td>" + y.year + "</td>" +
+      '<td class="num">' + (y.cash > 0 ? fmtVND(y.cash) : "0 VND") + "</td>" +
+      '<td class="num">' + (y.stock > 0 ? y.stock + "%" : "0%") + "</td></tr>";
+  }
+  html += "</tbody></table></div>";
+  html += '<div class="div-timeline">';
+  for (const y of years) {
+    html += '<div class="div-tl-item">' +
+      '<div class="div-tl-year">FY ' + y.year + "</div>" +
+      '<div class="div-tl-cash">' + (y.cash > 0 ? fmtVND(y.cash) : "No cash") + "</div>" +
+      '<div class="div-tl-stock' + (y.stock > 0 ? " has" : "") + '">' +
+      (y.stock > 0 ? "Stock " + y.stock + "%" : "No stock") + "</div>" +
+      "</div>";
+  }
+  html += "</div>";
+  html += '<p class="table-note">Cash and stock dividends are reported separately and are never combined. ' +
+    "Stock dividends are stated as a percentage of existing shares — they are not converted into VND.</p>";
+  body.innerHTML = html;
+}
+
+/* -------------------- Comparison cards -------------------- */
+function compCardHTML(metric, label) {
+  const s = metric.status;
+  const meanTxt = isFinite(metric.stats.mean) ? fmtNum(metric.stats.mean) + "x" : "—";
+  const medTxt = isFinite(metric.stats.median) ? fmtNum(metric.stats.median) + "x" : "—";
+  const curTxt = isFinite(metric.current) ? fmtNum(metric.current, 2) + "<span>x</span>" : "—";
+  return '<div class="comp-head">Historical ' + label + '</div>' +
+    '<div class="comp-current">' + curTxt + "</div>" +
+    '<div class="comp-curlabel">Current ' + label + "</div>" +
+    '<div class="comp-refs">' +
+      '<div class="comp-ref"><span>Historical Average</span><b>' + meanTxt + "</b></div>" +
+      '<div class="comp-ref"><span>Historical Median</span><b>' + medTxt + "</b></div>" +
+    "</div>" +
+    '<ul class="comp-bullets">' +
+      relBullet(metric.stats.mean, metric.current, "average") +
+      relBullet(metric.stats.median, metric.current, "median") +
+    "</ul>" +
+    '<div class="comp-status ' + toneOfStatus(s) + '">' + s.status.toUpperCase() + "</div>";
+}
+
+function renderCompCards(an) {
+  document.getElementById("compPe").innerHTML = compCardHTML(an.pe, "P/E");
+  document.getElementById("compPb").innerHTML = compCardHTML(an.pb, "P/B");
+}
+
+/* -------------------- Gauges -------------------- */
+function gaugeCaption(label, pct, count) {
+  if (!isFinite(pct)) return label + ": insufficient data to compute a percentile.";
+  const r = Math.round(pct);
+  if (pct <= 0.5) return label + ": " + r + "th percentile — at/near the bottom of the historical range (cheap).";
+  if (pct >= 99.5) return label + ": " + r + "th percentile — at/near the top of the historical range (expensive).";
+  return label + ": " + r + "th percentile — lower than ~" + Math.round(100 - pct) +
+    "% of " + count + " historical observations.";
+}
+function renderGauge(elId, title, pct, caption) {
+  const el = document.getElementById(elId);
+  const left = clamp(pct, 0, 100);
+  el.innerHTML =
+    '<div class="gauge-title">' + title + "</div>" +
+    '<div class="gauge-track"><div class="gauge-marker" style="left:' + left + '%">' +
+    '<div class="gauge-dot"></div></div></div>' +
+    '<div class="gauge-scale"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>' +
+    '<p class="gauge-caption">' + caption + "</p>";
+}
+function renderGauges(an) {
+  renderGauge("gaugePE", "Historical P/E Percentile", an.pe.stats.percentile,
+    gaugeCaption("Current P/E", an.pe.stats.percentile, an.pe.stats.count));
+  renderGauge("gaugePB", "Historical P/B Percentile", an.pb.stats.percentile,
+    gaugeCaption("Current P/B", an.pb.stats.percentile, an.pb.stats.count));
+}
+
+/* -------------------- Range position -------------------- */
+function rangeMarkup(stats, current, unit) {
+  if (!isFinite(stats.min) || !isFinite(stats.max)) {
+    return '<div class="range-empty">No valid data for the selected period.</div>';
+  }
+  const p = (v) => clamp(((v - stats.min) / (stats.max - stats.min || 1)) * 100, 0, 100);
+  const medTxt = isFinite(stats.median) ? fmtNum(stats.median) + unit : "—";
+  const avgTxt = isFinite(stats.mean) ? fmtNum(stats.mean) + unit : "—";
+  const curTxt = isFinite(current) ? fmtNum(current, 2) + unit : "—";
+  return '<div class="range-track">' +
+      '<div class="range-marker rm-med" style="left:' + p(stats.median) + '%" title="Median: ' + medTxt + '"></div>' +
+      '<div class="range-marker rm-avg" style="left:' + p(stats.mean) + '%" title="Average: ' + avgTxt + '"></div>' +
+      '<div class="range-marker rm-cur" style="left:' + p(current) + '%" title="Current: ' + curTxt + '"></div>' +
+    "</div>" +
+    '<div class="range-labels"><span>Min ' + fmtNum(stats.min) + unit + "</span>" +
+    "<span>Max " + fmtNum(stats.max) + unit + "</span></div>" +
+    '<div class="range-legend">' +
+      '<span class="lg-cur">● Current <b>' + curTxt + "</b></span>" +
+      '<span>| Median <b>' + medTxt + "</b></span>" +
+      '<span>◆ Average <b>' + avgTxt + "</b></span>" +
+    "</div>";
+}
+function renderRanges(an) {
+  document.getElementById("rangePe").innerHTML = rangeMarkup(an.pe.stats, an.pe.current, "x");
+  document.getElementById("rangePb").innerHTML = rangeMarkup(an.pb.stats, an.pb.current, "x");
+}
+
+/* -------------------- Statistics table -------------------- */
+function vsCell(reference, current) {
+  if (!isFinite(reference) || !isFinite(current)) return "—";
+  const c = classifyValuation(current, reference);
+  if (c.type === "fair") return '<span class="val-neutral">≈ in line</span>';
+  const dir = c.type === "discount" ? "↓" : "↑";
+  const cls = c.type === "discount" ? "val-below" : "val-above";
+  return '<span class="' + cls + '">' + fmtAbsPct(c.difference) + " " + dir + "</span>";
+}
+function statusBadge(s) {
+  const tone = toneOfStatus(s);
+  return '<span class="badge ' + tone + '">' + s.status + "</span>";
+}
+function renderTable(an) {
+  const row = (label, m) => "<tr><td>" + label + "</td>" +
+    '<td class="num">' + fmtNum(m.current, 2) + "x</td>" +
+    '<td class="num">' + fmtNum(m.stats.mean) + "x</td>" +
+    '<td class="num">' + fmtNum(m.stats.median) + "x</td>" +
+    '<td class="num">' + vsCell(m.stats.mean, m.current) + "</td>" +
+    '<td class="num">' + vsCell(m.stats.median, m.current) + "</td>" +
+    '<td class="num">' + statusBadge(m.status) + "</td></tr>";
+  document.getElementById("statsTableBody").innerHTML =
+    row("P/E", an.pe) + row("P/B", an.pb);
+  const ex = an.pe.excluded, exb = an.pb.excluded;
+  document.getElementById("tableNote").textContent =
+    "Green = current below the historical reference (cheaper); red = above (more expensive). " +
+    "Computed from cleaned data for the " + an.periodLabel + " window. Excluded: " +
+    ex.negative + " negative and " + ex.extreme + " extreme P/E; " + exb.negative + " negative P/B.";
+}
+
+/* -------------------- Assessment -------------------- */
+function renderAssessment(an) {
+  const el = document.getElementById("assessmentCard");
+  const a = an.assessment;
+  let html = '<div class="section-title">Valuation Assessment</div>' +
+    '<span class="assess-badge tone-' + a.tone + '">' + a.label + "</span>";
+  if (an.insufficient) {
+    html += "<p>Insufficient historical data to produce a reliable valuation assessment. " +
+      "Valid observations: " + an.pe.stats.count + " P/E and " + an.pb.stats.count +
+      " P/B (minimum " + MIN_OBSERVATIONS + " required).</p>";
+  } else {
+    const name = an.name || an.ticker;
+    html += "<p>" + vsSentence(name + " P/E", "average", an.pe.current, an.pe.stats.mean) +
+      " and " + vsSentence("P/E", "median", an.pe.current, an.pe.stats.median) + ".</p>";
+    html += "<p>" + vsSentence(name + " P/B", "average", an.pb.current, an.pb.stats.mean) +
+      " and " + vsSentence("P/B", "median", an.pb.current, an.pb.stats.median) + ".</p>";
+    const chip = (label, s) => '<span class="score-chip ' + toneOfStatus(s) + '">' +
+      label + " → " + s.status + "</span>";
+    html += '<div class="score-row">' + chip("P/E vs median", a.peStatus) +
+      chip("P/B vs median", a.pbStatus) +
+      '<span class="score-chip amber">Score ' + (a.score > 0 ? "+" : "") + a.score + "</span></div>";
+    const pctText = (isFinite(an.pe.stats.percentile) && isFinite(an.pb.stats.percentile))
+      ? "On the " + an.periodLabel.toLowerCase() + " window, P/E sits at the <b>" +
+        Math.round(an.pe.stats.percentile) + "th</b> percentile and P/B at the <b>" +
+        Math.round(an.pb.stats.percentile) + "th</b> percentile of their historical distributions."
+      : "";
+    if (pctText) html += "<p>" + pctText + "</p>";
+  }
+  html += '<p class="disclaimer">Historical valuation comparison only — this is not investment advice and ' +
+    "does not account for fundamentals, growth or macro conditions.</p>";
+  el.innerHTML = html;
+}
+
+/* -------------------- Charts (Chart.js) -------------------- */
+function cssVar(n) {
+  return getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+}
+function chartPalette() {
+  return {
+    line: cssVar("--chart-line"), avg: cssVar("--chart-avg"), med: cssVar("--chart-med"),
+    cur: cssVar("--chart-cur"), red: cssVar("--red"), grid: cssVar("--chart-grid"), text: cssVar("--muted")
+  };
+}
+function hexToRgba(color, a) {
+  if (color.indexOf("#") === 0) {
+    let hex = color.slice(1);
+    if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
+    const n = parseInt(hex, 16);
+    return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+  }
+  if (color.indexOf("rgb") === 0) return color.replace(/^rgb\(/, "rgba(").replace(/\)$/, "," + a + ")");
+  return color;
+}
+function fmtMonthYear(iso) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+}
+function fmtFullDate(iso) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+function makeSeriesChart(canvasId, datasetName, labels, values, avg, med, cur, unit, p, curColor) {
+  const canvas = document.getElementById(canvasId);
+  const g2d = canvas.getContext("2d");
+  const grad = g2d.createLinearGradient(0, 0, 0, (canvas.parentElement && canvas.parentElement.clientHeight) || 330);
+  grad.addColorStop(0, hexToRgba(p.line, 0.20));
+  grad.addColorStop(1, hexToRgba(p.line, 0.02));
+  const refLine = (label, color, dash, data) => ({
+    label, data, borderColor: color, borderDash: dash, borderWidth: 1.5,
+    pointRadius: 0, pointHitRadius: 0, tension: 0, fill: false
+  });
+  const constArr = (v) => labels.map(() => v);
+  const historyDs = {
+    label: datasetName, data: values, borderColor: p.line, backgroundColor: grad,
+    borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 8,
+    tension: 0.3, fill: true, spanGaps: false
+  };
+  return new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        historyDs,
+        refLine("Average", p.avg, [7, 5], constArr(avg)),
+        refLine("Median", p.med, [7, 5], constArr(med)),
+        refLine("Current", curColor, [2, 4], constArr(cur))
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { position: "top", labels: { usePointStyle: true, pointStyle: "line", color: p.text, boxWidth: 24 } },
+        tooltip: {
+          backgroundColor: "rgba(10, 15, 30, 0.94)",
+          titleColor: "#e6edf7",
+          bodyColor: "#cbd5e1",
+          borderColor: "rgba(255,255,255,0.12)",
+          borderWidth: 1,
+          padding: 11,
+          titleFont: { weight: "700" },
+          callbacks: {
+            title: function (items) {
+              if (!items.length) return "";
+              return fmtFullDate(labels[items[0].dataIndex]);
+            },
+            label: function (ctx) {
+              const v = ctx.raw;
+              if (ctx.datasetIndex === 0) return " " + datasetName + ": " + fmtNum(v) + unit;
+              if (ctx.datasetIndex === 1) return " Average: " + fmtNum(v) + unit;
+              if (ctx.datasetIndex === 2) return " Median: " + fmtNum(v) + unit;
+              return " Current: " + fmtNum(v, 2) + unit;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: p.text, maxTicksLimit: 8, maxRotation: 0, callback: function (v) { return fmtMonthYear(labels[v]); } },
+          grid: { color: p.grid }
+        },
+        y: {
+          ticks: { color: p.text, callback: function (v) { return fmtNum(v) + unit; } },
+          grid: { color: p.grid }
+        }
+      }
+    }
+  });
+}
+function renderCharts(an) {
+  destroyValuationCharts();
+  const p = chartPalette();
+  const peLabels = an.pe.points.map((pt) => pt.date);
+  const pbLabels = an.pb.points.map((pt) => pt.date);
+  const curPe = toneOfStatus(an.pe.status) === "green" ? p.cur : toneOfStatus(an.pe.status) === "red" ? cssVar("--red") : cssVar("--amber");
+  const curPb = toneOfStatus(an.pb.status) === "green" ? p.cur : toneOfStatus(an.pb.status) === "red" ? cssVar("--red") : cssVar("--amber");
+  charts.pe = makeSeriesChart("chartPe", "P/E", peLabels, an.pe.values,
+    an.pe.stats.mean, an.pe.stats.median, an.pe.current, "x", p, curPe);
+  charts.pb = makeSeriesChart("chartPb", "P/B", pbLabels, an.pb.values,
+    an.pb.stats.mean, an.pb.stats.median, an.pb.current, "x", p, curPb);
+}
+
+/* -------------------- App state & flow -------------------- */
+const state = {
+  ticker: null, period: "5y", mode: "stock", lastStockTicker: null,
+  analysis: null, lastData: null, fundPeriod: "yearly"
+};
+
+function setLoading(on) {
+  document.getElementById("loading").classList.toggle("hidden", !on);
+  const btn = document.getElementById("analyzeBtn");
+  btn.disabled = on;
+  btn.textContent = on ? "Analyzing…" : "Analyze";
+}
+function showAlert(msg, kind) {
+  const el = document.getElementById("alertBox");
+  el.textContent = msg;
+  el.className = "alert " + kind;
+}
+function clearAlert() {
+  const el = document.getElementById("alertBox");
+  el.textContent = "";
+  el.className = "alert hidden";
+}
+function hideContent() {
+  document.getElementById("content").classList.add("hidden");
+  destroyCharts();
+}
+
+function renderAll(an, data) {
+  document.getElementById("assetTitle").textContent = an.name || an.ticker;
+  document.getElementById("tickerPill").textContent = an.ticker;
+  document.getElementById("periodLabelBadge").textContent = an.periodLabel;
+  const badge = document.getElementById("demoBadge");
+  if (data.isDemo) {
+    badge.textContent = "Demo Data";
+    badge.className = "demo-badge demo";
+  } else {
+    badge.textContent = "Live · " + (data.source || "VNDirect");
+    badge.className = "demo-badge live";
+  }
+  document.getElementById("asOfBadge").textContent =
+    data.isDemo ? "Synthetic series" : "As of " + (data.asOf || "");
+  const isIndex = !!data.isIndex;
+  document.getElementById("priceCard").classList.toggle("hidden", isIndex);
+  document.getElementById("dividendCard").classList.toggle("hidden", isIndex);
+  document.getElementById("fundSection").classList.toggle("hidden", isIndex);
+  document.getElementById("dividendSection").classList.toggle("hidden", isIndex);
+  if (!isIndex) {
+    renderPriceCard(data);
+    renderDividendCard(data);
+    renderFundSection(data);
+    renderDividendSection(data);
+  } else {
+    destroyFundCharts();
+  }
+  renderHero(an);
+  renderCompCards(an);
+  renderGauges(an);
+  renderRanges(an);
+  renderTable(an);
+  renderAssessment(an);
+  renderCharts(an);
+  document.getElementById("content").classList.remove("hidden");
+}
+
+function setFundPeriod(p) {
+  state.fundPeriod = p;
+  document.querySelectorAll("[data-fperiod]").forEach(function (b) {
+    b.classList.toggle("active", b.dataset.fperiod === p);
+  });
+  if (state.lastData && !state.lastData.isIndex) renderFundSection(state.lastData);
+}
+
+async function analyze() {
+  const period = state.period;
+  let ticker;
+  const raw = state.mode === "index" ? "VNINDEX" : document.getElementById("tickerInput").value;
+  if (!String(raw || "").trim()) return; // nothing typed — stay quiet (no error on first load)
+  try {
+    ticker = validateTicker(raw);
+  } catch (err) {
+    clearAlert();
+    showAlert(err.message, "error");
+    hideContent();
+    return;
+  }
+  state.ticker = ticker;
+  state.period = period;
+  setLoading(true);
+  clearAlert();
+  try {
+    const data = await getStockData(ticker, period);
+    if (!data || !Array.isArray(data.historical) || data.historical.length === 0) {
+      throw new Error("No data available for " + ticker + ".");
+    }
+    const analysis = buildAnalysis(data, period);
+    if (analysis.window.length === 0) {
+      showAlert("No historical data available for " + ticker + " in the selected period.", "warn");
+      hideContent();
+      return;
+    }
+    state.analysis = analysis;
+    state.lastData = data;
+    renderAll(analysis, data);
+    if (data.isDemo) {
+      showAlert("Live data unavailable" + (data.fallbackReason ? " (" + data.fallbackReason + ")" : "") +
+        " — showing demo data for " + ticker + ".", "warn");
+    } else if (data.isSynthetic) {
+      showAlert("No real market data configured for " + ticker + " — showing synthetic demo data.", "warn");
+    } else if (data.fundUnavailable) {
+      showAlert(data.fundUnavailable, "warn");
+    }
+  } catch (err) {
+    console.error(err);
+    showAlert((err && err.message) || "Failed to load valuation data.", "error");
+    hideContent();
+  } finally {
+    setLoading(false);
+  }
+}
+
+function setPeriod(p) {
+  state.period = p;
+  document.querySelectorAll(".seg-btn").forEach(function (b) {
+    b.classList.toggle("active", b.dataset.period === p);
+  });
+  if (state.ticker) analyze();
+}
+
+function setMode(mode) {
+  const input = document.getElementById("tickerInput");
+  if (mode === "index") {
+    state.lastStockTicker = input.value.trim().toUpperCase() || state.lastStockTicker;
+    input.value = "VNINDEX";
+    input.disabled = true;
+    input.classList.add("disabled");
+  } else {
+    input.disabled = false;
+    input.classList.remove("disabled");
+    input.value = state.lastStockTicker || "";
+    input.focus();
+  }
+  state.mode = mode;
+  document.getElementById("modeStock").classList.toggle("active", mode === "stock");
+  document.getElementById("modeIndex").classList.toggle("active", mode === "index");
+  analyze();
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  document.getElementById("themeToggle").textContent = theme === "dark" ? "Light" : "Dark";
+  if (state.analysis) renderCharts(state.analysis);
+  if (state.lastData && !state.lastData.isIndex) renderFundSection(state.lastData);
+}
+
+function initApp() {
+  const saved = localStorage.getItem("vnval-theme");
+  applyTheme(saved || "dark");
+
+  if (typeof Chart === "undefined") {
+    showAlert("Chart.js could not be loaded from the CDN. Check your internet connection and reload.", "error");
+    return;
+  }
+
+  document.getElementById("themeToggle").addEventListener("click", function () {
+    const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    applyTheme(next);
+    localStorage.setItem("vnval-theme", next);
+  });
+  document.getElementById("analyzeForm").addEventListener("submit", function (e) { e.preventDefault(); analyze(); });
+  document.querySelectorAll(".seg-btn").forEach(function (b) {
+    b.addEventListener("click", function () { setPeriod(b.dataset.period); });
+  });
+  document.querySelectorAll("[data-fperiod]").forEach(function (b) {
+    b.addEventListener("click", function () { setFundPeriod(b.dataset.fperiod); });
+  });
+  document.getElementById("modeStock").addEventListener("click", function () { setMode("stock"); });
+  document.getElementById("modeIndex").addEventListener("click", function () { setMode("index"); });
+  document.querySelectorAll(".chip[data-ticker]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      if (b.dataset.ticker === "VNINDEX") { setMode("index"); return; }
+      setMode("stock");
+      document.getElementById("tickerInput").value = b.dataset.ticker;
+      analyze();
+    });
+  });
+
+  analyze(); // initial load
+}
+
+/* Guard so the same code can be loaded in a non-DOM environment (Node) for testing. */
+if (typeof document !== "undefined") initApp();</script>
+</body>
+</html>
