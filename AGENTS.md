@@ -5,7 +5,7 @@
 - The entire deliverable is `stock_dashboard.html`: a single-file Vietnam stock dashboard (valuation, dividends, fundamentals). No build system, no package.json, no in-repo tests, no CI.
 - Rename history: created as `index.html`, user-renamed to `pepb_dashboard.html`, then to `stock_dashboard.html`. Old harness/test files in `%TEMP%` may reference the old names.
 - `stock-dashboard.json` at the root is an exported OpenCode chat-session log (~6 MB), not app data or config — do not treat it as a data source or edit it.
-- Scope: works for individual stocks AND index tickers (`INDEX_TICKERS`: VNINDEX, VN30, HNXINDEX, ...). The dashboard adapts by sector: banks (detected via `BANK_TICKERS` set fallback) get ROE/NIM/NPL/leverage charts and must NOT show ROIC/FCF/OCF/D/E/Capex; non-banks get the reverse set (ROIC, Adjusted FCF, OCF, Capex, D/E; no NIM/NPL). All fundamental charts share ONE Quarterly/Yearly toggle (default Yearly).
+- Scope: works for individual stocks AND index tickers (`INDEX_TICKERS`: VNINDEX, VN30, HNXINDEX, ...). The dashboard adapts by sector: banks (detected via `BANK_TICKERS` set fallback) get ROE/NIM/NPL/leverage charts and must NOT show ROIC/FCF/OCF/D/E/Capex/P-AFCF; non-banks get the reverse set (ROIC, Adjusted FCF, OCF, Capex, D/E plus the P/Adjusted FCF valuation metric/chart; no NIM/NPL). All fundamental charts share ONE Quarterly/Yearly toggle (default Yearly); it also drives the P/Adjusted-FCF series.
 - All app code lives in ONE inline `<script>` block (the other `<script src=...>` is the Chart.js 4.4.1 CDN tag). CSS is inline in `<style>`. File must stay UTF-8 **without BOM**; UI text is Vietnamese — never re-encode or "fix" characters (em-dashes `—` are intentional; mojibake like `Ã` means you broke encoding).
 
 ## How to verify changes (no test runner exists — recreate the harness)
@@ -19,7 +19,7 @@ The HTML cannot be executed directly under node. Workflow used by prior sessions
    [IO.File]::WriteAllText("$env:TEMP\opencode\vnval_app.js", $m.Groups[1].Value, [Text.UTF8Encoding]::new($false))
    node --check vnval_app.js
    ```
-2. Unit tests = concat `vnval_app.js` + a test file, run with node. Suites assert via `PASS:`/`FAIL:` lines; count with `Select-String`. Two suites existed: fundamentals (~153 tests) and legacy valuation (~69), plus a DOM-stub render smoke test and a live E2E check that hits the real APIs.
+2. Unit tests = concat `vnval_app.js` + a test file, run with node. Suites assert via `PASS:`/`FAIL:` lines; count with `Select-String`. Suites: fundamentals (~153 tests), legacy valuation (~67; its `vsSentence` asserts were rewritten to `relText` after the assessment-panel removal), P/Adjusted FCF (~59), plus a DOM-stub render smoke test and a live E2E check that hits the real APIs. The `*_body*.js` files are the canonical test sources — prebuilt `*_full.js` embeds go stale as the app evolves, always re-concat before running.
 3. Structural checks after edits: exactly 2 `<script`/`</script>` tags (count the prefix `<script`, NOT the literal `<script>` — the CDN tag has attributes so the literal matches only once), 1 `<body>`, no BOM, no mojibake.
 4. The script ends with `if (typeof document !== "undefined") initApp();` so node can load it — keep that guard.
 
@@ -39,6 +39,7 @@ Node-harness gotchas: append test code INSIDE the same `eval(code + ...)` string
 
 - `classifyValuation` is the single source of truth for Cheap/Fair/Expensive and is intentionally asymmetric: discount >10% (`CHEAP_DISCOUNT`) → Cheap; 0–10% discount → status Fair but `type: "discount"` so the UI still shows the magnitude ("5.0% discount", not "≈ in line"); premium >5% (`FAIR_TOLERANCE`) → Expensive. Boundaries are exclusive (exactly 10%/5% stays Fair).
 - `getStockValuation` has a single caller but is kept deliberately (test suite + compatibility entry point). CSS classes `tone-green/amber/orange/red` look unused but are built dynamically (`"assess-badge tone-" + a.tone`) — never delete them as dead code.
+- P/Adjusted FCF (non-banks only): quarterly ratios divide period-end market cap by **TTM** Adjusted FCF (`calculateTTM` — must use `Number.isFinite`, plain `isFinite(null)` is true); yearly ratios use annual AFCF. Period market cap = P/B at period end × reported equity (≡ price × shares, historical values only — never today's price). Non-positive AFCF renders as N/M, never a negative or zero multiple. The series follows the Quarterly/Yearly toggle, NOT the 3y/5y/10y selector.
 
 ## Product decisions from the user (do not undo)
 

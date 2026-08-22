@@ -352,6 +352,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 22px 18px 44px; background: v
 .comp-status.green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
 .comp-status.red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
 .comp-status.amber { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+.comp-status.gray { background: var(--card-2); color: var(--muted); border: 1px solid var(--border); }
 
 /* ================= Gauges ================= */
 .gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; margin-bottom: 18px; }
@@ -418,6 +419,7 @@ tr:last-child td { border-bottom: none; }
 .badge.cheap { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
 .badge.expensive { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
 .badge.fair { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+.badge.gray { background: var(--card-2); color: var(--muted); border: 1px solid var(--border); }
 .val-below { color: var(--green); font-weight: 600; }
 .val-above { color: var(--red); font-weight: 600; }
 .val-neutral { color: var(--muted); font-weight: 600; }
@@ -498,6 +500,7 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
         <div class="hero-metric" id="priceCard"></div>
         <div class="hero-metric" id="heroPe"></div>
         <div class="hero-metric" id="heroPb"></div>
+        <div class="hero-metric hidden" id="heroPafcf"></div>
         <div class="hero-metric" id="dividendCard"></div>
       </div>
       <div class="hero-overall">
@@ -526,6 +529,7 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
     <section class="comp-grid" aria-label="P/E and P/B comparison">
       <div class="card comp" id="compPe"></div>
       <div class="card comp" id="compPb"></div>
+      <div class="card comp hidden" id="compPafcf"></div>
     </section>
 
     <section class="gauges" aria-label="Historical percentile gauges">
@@ -556,6 +560,12 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
         <div class="section-title">Historical P/B</div>
         <div class="chart-wrap"><canvas id="chartPb" aria-label="P/B chart"></canvas></div>
       </div>
+    </section>
+
+    <section class="card hidden" id="pafcfSection" aria-label="Historical P/Adjusted FCF">
+      <div class="section-title">Historical P/Adjusted FCF</div>
+      <div class="chart-wrap"><canvas id="chartPafcf" aria-label="P/Adjusted FCF chart"></canvas></div>
+      <p class="table-note" id="pafcfNote"></p>
     </section>
 
     <section class="card" aria-label="Valuation statistics table">
@@ -599,7 +609,12 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
    - `getStockData(ticker, period)` is the ONLY entry point the UI uses.
      It aggregates four data layers:
        1. Valuation  — VNDirect daily P/E (`PRICE_TO_EARNINGS`) and P/B
-          (`PRICE_TO_BOOK`) ratios (stocks and indices).
+          (`PRICE_TO_BOOK`) ratios (stocks and indices). For non-banks,
+          P/Adjusted FCF is additionally derived per period:
+          period-end market cap (P/B at period end × reported equity,
+          i.e. price × shares) ÷ Adjusted FCF (TTM for quarterly rows);
+          non-positive Adjusted FCF renders as N/M, never a negative or
+          zero multiple.
        2. Price      — VNDirect `/v4/stock_prices`; `close` is in
           thousands of VND, so it is multiplied by 1000.
        3. Dividends  — VNDirect `/v4/events`: type DIVIDEND (cash, VND
@@ -880,6 +895,104 @@ function computeSeriesStats(values, current) {
   };
 }
 
+/* -------------------- P / Adjusted FCF --------------------
+   Reusable calculation functions (#12).
+   calculateAdjustedFCF keeps the anti-double-counting rule (#7/#18) in
+   ONE place: associate/JV dividends are added only when they are NOT
+   already inside OCF. capex is passed as a positive magnitude. */
+function calculateAdjustedFCF(ocf, capex, associateJVDividends, dividendsAlreadyIncluded) {
+  if (dividendsAlreadyIncluded === true) return ocf - capex;
+  return ocf - capex + associateJVDividends;
+}
+/* TTM = current quarter + previous 3 quarters (#5). Null until four
+   consecutive valid standalone quarters exist — never a partial sum. */
+function calculateTTM(values, index) {
+  if (!values || index == null || index < 3 || index >= values.length) return null;
+  const w = [values[index], values[index - 1], values[index - 2], values[index - 3]];
+  if (!w.every(Number.isFinite)) return null; // isFinite(null) is true — use the strict check
+  return w[0] + w[1] + w[2] + w[3];
+}
+/* Non-positive or missing Adjusted FCF → null, rendered as "N/M" (#13).
+   A negative multiple (-x) or 0x is never displayed. */
+function calculatePriceToAdjustedFCF(marketCap, adjustedFCF) {
+  if (!adjustedFCF || !isFinite(adjustedFCF) || adjustedFCF <= 0) return null;
+  if (!isFinite(marketCap) || marketCap <= 0) return null;
+  return marketCap / adjustedFCF;
+}
+function quarterEndIso(year, quarter) {
+  const md = { 1: "-03-31", 2: "-06-30", 3: "-09-30", 4: "-12-31" }[quarter];
+  return md ? String(year) + md : null;
+}
+/* PB lookup over the daily VNDirect series: value on the last report
+   date at/before the requested date (period-end close). */
+function buildPbLookup(valuationHistorical) {
+  const pts = (valuationHistorical || [])
+    .filter((p) => p && typeof p.date === "string" && isFinite(p.pb))
+    .map((p) => ({ date: p.date, pb: p.pb }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+  return function pbAtOrBefore(iso) {
+    if (!iso) return NaN;
+    let found = NaN;
+    for (const p of pts) {
+      if (p.date <= iso) found = p.pb; else break;
+    }
+    return found;
+  };
+}
+/* Attaches per-period market cap and P/Adjusted FCF to CORPORATE rows
+   (mutates additively) and computes the current ratio.
+
+   Historical market cap methodology: no public VNDirect/cafef endpoint
+   exposes historical shares outstanding, so period-end market cap is
+   derived as  PB(period end) x Equity(that fiscal period). Because
+   P/B = Price / BVPS and Equity = BVPS x SharesOutstanding,
+       PB x Equity === Price x SharesOutstanding,
+   i.e. the true historical market cap built ONLY from historical values
+   (never today's price — #4). Yearly ratios divide by that year's
+   Adjusted FCF (#6); quarterly ratios by TTM Adjusted FCF (#5). */
+function attachPafcfSeries(fund, valuationHistorical) {
+  if (!fund || fund.type !== "corporate") return null;
+  const pbAt = buildPbLookup(valuationHistorical);
+  const mcAt = function (iso, eq) {
+    const pb = pbAt(iso);
+    if (!isFinite(pb) || pb <= 0 || !isFinite(eq) || eq <= 0) return null;
+    return pb * eq;
+  };
+  const yRows = (fund.yearly && fund.yearly.rows) || [];
+  for (const r of yRows) {
+    r.marketCap = mcAt(r.year + "-12-31", r.equity);
+    r.priceToAdjustedFcf = calculatePriceToAdjustedFCF(r.marketCap, r.adjustedFcf);
+  }
+  const qRows = ((fund.quarterly && fund.quarterly.rows) || [])
+    .slice().sort((a, b) => a.year - b.year || a.quarter - b.quarter);
+  const afVals = qRows.map((r) => r.adjustedFcf);
+  for (let i = 0; i < qRows.length; i++) {
+    const r = qRows[i];
+    r.adjustedFcfTTM = calculateTTM(afVals, i);
+    r.marketCap = mcAt(quarterEndIso(r.year, r.quarter), r.equity);
+    r.priceToAdjustedFcf = calculatePriceToAdjustedFCF(r.marketCap, r.adjustedFcfTTM);
+  }
+  /* Current values: today's P/B against the most recent reported equity,
+     over TTM Adjusted FCF (fallback: latest fiscal-year Adjusted FCF). */
+  const lastY = yRows.length ? yRows[yRows.length - 1] : null;
+  const lastQ = qRows.length ? qRows[qRows.length - 1] : null;
+  const lastHist = (valuationHistorical || []).filter((p) => p && isFinite(p.pb)).pop();
+  const curPb = lastHist ? lastHist.pb : NaN;
+  const useQ = lastQ && lastY && String(quarterEndIso(lastQ.year, lastQ.quarter)) > String(lastY.year + "-12-31");
+  const eqRow = useQ ? lastQ : lastY;
+  const curMc = eqRow ? mcAt(lastHist ? lastHist.date : null, eqRow.equity) : null;
+  let curTtm = null;
+  for (let i = qRows.length - 1; i >= 0 && curTtm == null; i--) curTtm = qRows[i].adjustedFcfTTM;
+  if (curTtm == null && lastY) curTtm = lastY.adjustedFcf;
+  fund.pafcfCurrent = {
+    marketCap: curMc,
+    adjustedFcfTtm: curTtm,
+    pafcf: calculatePriceToAdjustedFCF(curMc, curTtm),
+    basis: qRows.some((r) => r.adjustedFcfTTM != null) ? "ttm" : "annual"
+  };
+  return fund.pafcfCurrent;
+}
+
 /* -------------------- Mock data provider --------------------
    Deterministic per ticker (seeded PRNG) so reloads are stable.
    Demo only — never live. */
@@ -970,9 +1083,10 @@ function generateMockFundamentals(sector, profile, rng) {
       const capex = ocf * (profile.capexPct != null ? profile.capexPct : 0.2) * (0.8 + 0.4 * rng());
       const de = (profile.deBase != null ? profile.deBase : 0.5) * (0.85 + 0.3 * rng());
       const divRec = (profile.assocDivBase != null ? profile.assocDivBase : 50e9) * (0.8 + 0.4 * rng());
+      const equity = 2500e9 * (0.8 + 0.4 * t);
       rows.push({
         year, roic: Math.max(0, roic), fcf: ocf - capex, adjustedFcf: ocf - capex + divRec,
-        ocf, capex, de, associateJVDividendsReceived: divRec
+        ocf, capex, de, associateJVDividendsReceived: divRec, equity
       });
     }
   }
@@ -995,7 +1109,8 @@ function generateMockFundamentals(sector, profile, rng) {
           roic: r.roic * jitter,
           fcf: r.fcf / q * jitter, adjustedFcf: r.adjustedFcf / q * jitter,
           ocf: r.ocf / q * jitter, capex: r.capex / q * jitter, de: r.de * (0.95 + 0.1 * rng()),
-          associateJVDividendsReceived: r.associateJVDividendsReceived / q * jitter
+          associateJVDividendsReceived: r.associateJVDividendsReceived / q * jitter,
+          equity: r.equity
         });
       }
     }
@@ -1117,6 +1232,7 @@ const MockDataProvider = {
     const price = { price: Math.round(profile.pe * eps), date: isoDate(new Date()) };
     const sector = profile.sector != null ? profile.sector : (BANK_TICKERS.has(ticker) ? "bank" : "corporate");
     const fundamentals = generateMockFundamentals(sector, profile, rng);
+    if (sector !== "bank") attachPafcfSeries(fundamentals, val.historical);
     const nowY = new Date().getFullYear();
     const records = [];
     for (let i = 4; i >= 1; i--) {
@@ -1483,12 +1599,14 @@ function buildCorporateFundamentals(bsAn, isAn, cfAn, bsQ, isQ, cfQ, includeInOc
     const ic = eq + sb + lb - ca;
     if (!isFinite(ic) || ic <= 0) continue;
     const assocDiv = isFinite(divMap.get(y)) ? Math.max(0, divMap.get(y)) : 0;
-    const fcf = oc + cp;
-    // #7: add associate/JV dividends ONLY if they are not already in OCF.
-    const adjustedFcf = incOcf ? fcf : fcf + assocDiv;
+    const capexAbs = Math.abs(cp);
+    const fcf = oc - capexAbs;
+    // #7/#18: single source of truth for the associate/JV adjustment.
+    const adjustedFcf = calculateAdjustedFCF(oc, capexAbs, assocDiv, incOcf);
     yearly.push({
       year: y, roic: nopat / ic, fcf, adjustedFcf, ocf: oc,
-      capex: Math.abs(cp), de: (sb + lb) / eq, associateJVDividendsReceived: assocDiv
+      capex: capexAbs, de: (sb + lb) / eq, associateJVDividendsReceived: assocDiv,
+      equity: eq
     });
   }
   yearly.sort((a, b) => a.year - b.year);
@@ -1529,12 +1647,14 @@ function buildCorporateFundamentals(bsAn, isAn, cfAn, bsQ, isQ, cfQ, includeInOc
     const ic = eq + sb + lb - ca;
     if (!isFinite(ic) || ic <= 0) continue;
     const assocDiv = Math.max(0, qDivStandalone.get(p) || 0);
-    const fcf = oc + cp;
-    const adjustedFcf = incOcf ? fcf : fcf + assocDiv;
+    const capexAbs = Math.abs(cp);
+    const fcf = oc - capexAbs;
+    const adjustedFcf = calculateAdjustedFCF(oc, capexAbs, assocDiv, incOcf);
     quarterly.push({
       year: r.year, quarter: r.quarter, period: p,
       roic: nopatQ / ic, fcf, adjustedFcf, ocf: oc,
-      capex: Math.abs(cp), de: (sb + lb) / eq, associateJVDividendsReceived: assocDiv
+      capex: capexAbs, de: (sb + lb) / eq, associateJVDividendsReceived: assocDiv,
+      equity: eq
     });
   }
   quarterly.sort((a, b) => a.year - b.year || a.quarter - b.quarter);
@@ -1781,6 +1901,9 @@ async function fetchLiveStockData(ticker) {
       const isQ = settledQ[1].status === "fulfilled" ? settledQ[1].value : null;
       const cfQ = settledQ[2].status === "fulfilled" ? settledQ[2].value : null;
       fund = buildCorporateFundamentals(bs, is, cf, bsQ, isQ, cfQ, associateDivsIncludedInOcf(ticker));
+      /* P/Adjusted FCF (#1-#6): per-period market cap from the daily
+         VNDirect P/B series x reported equity; TTM for quarterly rows. */
+      attachPafcfSeries(fund, valuation.historical);
     }
     if (fund && fund.yearly && fund.yearly.rows && fund.yearly.rows.length >= MIN_FUND_ROWS) {
       result.fundamentals = fund;
@@ -1838,6 +1961,7 @@ function buildAnalysis(data, period) {
   });
   const pe = makeMetric(peClean, peStats, data.currentPE);
   const pb = makeMetric(pbClean, pbStats, data.currentPB);
+  const pafcf = extractPafcfMetrics(data);
   return {
     ticker: data.ticker,
     name: data.name,
@@ -1847,9 +1971,88 @@ function buildAnalysis(data, period) {
     window: windowData,
     pe,
     pb,
+    pafcf,
+    hasPafcf: pafcf.hasPafcf,
     insufficient: peStats.count < MIN_OBSERVATIONS || pbStats.count < MIN_OBSERVATIONS,
     assessment: assessValuation(pe, pb)
   };
+}
+
+/* P/Adjusted FCF metric objects (#7/#8/#14). Statistics use valid
+   historical periods only — periods whose Adjusted FCF is non-positive
+   are N/M (null) and can never distort average/median (#13/#14). The
+   series follows the Quarterly/Yearly toggle rather than the 3y/5y/10y
+   selector, so cards always match the chart's reference lines. */
+function extractPafcfMetrics(data) {
+  const f = data.fundamentals;
+  const out = { hasPafcf: false, yearly: null, quarterly: null };
+  if (!f || f.type !== "corporate") return out;
+  const cur = f.pafcfCurrent || {};
+  const mkMetric = function (rows, dateOf, labelOf, freq) {
+    const points = [];
+    const values = [];
+    let nmCount = 0;
+    for (const r of rows || []) {
+      if (!isFinite(r.marketCap)) continue; // no period-end market cap → no ratio possible
+      const v = r.priceToAdjustedFcf;
+      points.push({ date: dateOf(r), label: labelOf(r), value: v, row: r });
+      if (v != null && isFinite(v)) values.push(v); else nmCount++;
+    }
+    const current = cur.pafcf != null && isFinite(cur.pafcf) ? cur.pafcf : NaN;
+    const stats = computeSeriesStats(values, current);
+    return {
+      freq,
+      available: values.length > 0,
+      nmPeriods: nmCount,
+      points,
+      values,
+      current,
+      basis: cur.basis || "ttm",
+      currentMarketCap: cur.marketCap != null ? cur.marketCap : null,
+      currentAfcfTtm: cur.adjustedFcfTtm != null ? cur.adjustedFcfTtm : null,
+      excluded: { invalid: nmCount, negative: 0, extreme: 0 },
+      stats,
+      status: metricStatus(current, stats.median, stats.mean),
+      discountVsAvg: discount(stats.mean, current),
+      discountVsMedian: discount(stats.median, current)
+    };
+  };
+  out.yearly = mkMetric(
+    (f.yearly && f.yearly.rows) || [],
+    (r) => r.year + "-12-31",
+    (r) => String(r.year),
+    "yearly");
+  out.quarterly = mkMetric(
+    ((f.quarterly && f.quarterly.rows) || [])
+      .slice().sort((a, b) => a.year - b.year || a.quarter - b.quarter),
+    (r) => quarterEndIso(r.year, r.quarter),
+    (r) => r.period,
+    "quarterly");
+  out.hasPafcf = out.yearly.available || out.quarterly.available ||
+    (cur.pafcf != null && isFinite(cur.pafcf));
+  return out;
+}
+/* The Quarterly/Yearly toggle drives which P/Adjusted FCF series the
+   cards, table row and chart show (#10); falls back to the other
+   frequency when the preferred one has no usable data. */
+function activePafcf(an) {
+  const wantQ = state.fundPeriod === "quarterly";
+  if (!an.pafcf) {
+    return { nm: true, freq: wantQ ? "quarterly" : "yearly", current: NaN,
+      stats: { mean: NaN, median: NaN }, values: [], points: [] };
+  }
+  const m = wantQ ? an.pafcf.quarterly : an.pafcf.yearly;
+  if (m.available) return m;
+  return wantQ ? an.pafcf.yearly : an.pafcf.quarterly;
+}
+/* #13 wording for non-meaningful current ratios. */
+function pafcfNmReason(m) {
+  if (!m.nm) return "";
+  if (m.currentAfcfTtm == null || !isFinite(m.currentAfcfTtm))
+    return "Adjusted FCF (TTM) is not available.";
+  if (m.currentAfcfTtm <= 0)
+    return "Adjusted FCF is negative or zero, therefore P/Adjusted FCF is not meaningful.";
+  return "Market capitalization data is unavailable.";
 }
 
 /* -------------------- Rendering helpers -------------------- */
@@ -1866,7 +2069,13 @@ function statusPill(s) {
   return '<span class="hm-status ' + toneOfStatus(s) + '">' + s.status.toUpperCase() + "</span>";
 }
 
-function heroMetricHTML(metric, label) {
+function heroMetricHTML(metric, label, nmReason) {
+  if (metric.nm) {
+    return '<div class="hm-label">Current ' + label + '</div>' +
+      '<div class="hm-value">N/M</div>' +
+      '<span class="assess-badge tone-gray">N/M</span>' +
+      '<div class="hm-note">' + (nmReason || "Not meaningful.") + "</div>";
+  }
   const s = metric.status;
   const curTxt = isFinite(metric.current)
     ? fmtNum(metric.current, 2) + '<span class="hm-unit">x</span>' : "—";
@@ -1882,6 +2091,11 @@ function heroMetricHTML(metric, label) {
 function renderHero(an) {
   document.getElementById("heroPe").innerHTML = heroMetricHTML(an.pe, "P/E");
   document.getElementById("heroPb").innerHTML = heroMetricHTML(an.pb, "P/B");
+  if (an.hasPafcf) {
+    const m = activePafcf(an);
+    document.getElementById("heroPafcf").innerHTML =
+      heroMetricHTML(m, m.freq === "quarterly" ? "P/Adj. FCF (TTM)" : "P/Adj. FCF", pafcfNmReason(m));
+  }
   const a = an.assessment;
   document.getElementById("overallBadge").className = "assess-badge tone-" + a.tone;
   document.getElementById("overallBadge").textContent = a.label;
@@ -1945,10 +2159,11 @@ function renderDividendCard(data) {
 }
 
 /* -------------------- Fundamentals section -------------------- */
-let charts = { pe: null, pb: null, fund: [] };
+let charts = { pe: null, pb: null, pafcf: null, fund: [] };
 function destroyValuationCharts() {
   if (charts.pe) { try { charts.pe.destroy(); } catch (e) {} charts.pe = null; }
   if (charts.pb) { try { charts.pb.destroy(); } catch (e) {} charts.pb = null; }
+  if (charts.pafcf) { try { charts.pafcf.destroy(); } catch (e) {} charts.pafcf = null; }
 }
 function destroyFundCharts() {
   charts.fund.forEach(function (c) { try { c.destroy(); } catch (e) {} });
@@ -2267,7 +2482,14 @@ function renderDividendSection(data) {
 }
 
 /* -------------------- Comparison cards -------------------- */
-function compCardHTML(metric, label) {
+function compCardHTML(metric, label, nmReason) {
+  if (metric.nm) {
+    return '<div class="comp-head">Historical ' + label + '</div>' +
+      '<div class="comp-current">N/M</div>' +
+      '<div class="comp-curlabel">Current ' + label + "</div>" +
+      '<p class="table-note" style="text-align:center">' + (nmReason || "Not meaningful.") + "</p>" +
+      '<div class="comp-status gray">N/M</div>';
+  }
   const s = metric.status;
   const meanTxt = isFinite(metric.stats.mean) ? fmtNum(metric.stats.mean) + "x" : "—";
   const medTxt = isFinite(metric.stats.median) ? fmtNum(metric.stats.median) + "x" : "—";
@@ -2289,6 +2511,11 @@ function compCardHTML(metric, label) {
 function renderCompCards(an) {
   document.getElementById("compPe").innerHTML = compCardHTML(an.pe, "P/E");
   document.getElementById("compPb").innerHTML = compCardHTML(an.pb, "P/B");
+  if (an.hasPafcf) {
+    const m = activePafcf(an);
+    document.getElementById("compPafcf").innerHTML =
+      compCardHTML(m, m.freq === "quarterly" ? "P/Adj. FCF (TTM)" : "P/Adjusted FCF", pafcfNmReason(m));
+  }
 }
 
 /* -------------------- Gauges -------------------- */
@@ -2365,13 +2592,34 @@ function renderTable(an) {
     '<td class="num">' + vsCell(m.stats.mean, m.current) + "</td>" +
     '<td class="num">' + vsCell(m.stats.median, m.current) + "</td>" +
     '<td class="num">' + statusBadge(m.status) + "</td></tr>";
-  document.getElementById("statsTableBody").innerHTML =
-    row("P/E", an.pe) + row("P/B", an.pb);
+  let html = row("P/E", an.pe) + row("P/B", an.pb);
+  if (an.hasPafcf) {
+    const m = activePafcf(an);
+    const avgTxt = isFinite(m.stats.mean) ? fmtNum(m.stats.mean) + "x" : "—";
+    const medTxt = isFinite(m.stats.median) ? fmtNum(m.stats.median) + "x" : "—";
+    const nm = m.nm || !isFinite(m.current);
+    html += "<tr><td>P/Adjusted FCF" + (m.freq === "quarterly" ? " (TTM)" : "") + "</td>" +
+      '<td class="num">' + (nm ? "N/M" : fmtNum(m.current, 2) + "x") + "</td>" +
+      '<td class="num">' + avgTxt + "</td>" +
+      '<td class="num">' + medTxt + "</td>" +
+      '<td class="num">' + (nm ? "—" : vsCell(m.stats.mean, m.current)) + "</td>" +
+      '<td class="num">' + (nm ? "—" : vsCell(m.stats.median, m.current)) + "</td>" +
+      '<td class="num">' + (nm ? '<span class="badge gray">N/M</span>' : statusBadge(m.status)) + "</td></tr>";
+  }
+  document.getElementById("statsTableBody").innerHTML = html;
   const ex = an.pe.excluded, exb = an.pb.excluded;
-  document.getElementById("tableNote").textContent =
+  let note =
     "Green = current below the historical reference (cheaper); red = above (more expensive). " +
     "Computed from cleaned data for the " + an.periodLabel + " window. Excluded: " +
     ex.negative + " negative and " + ex.extreme + " extreme P/E; " + exb.negative + " negative P/B.";
+  if (an.hasPafcf) {
+    const m = activePafcf(an);
+    note += " P/Adjusted FCF uses " + (m.freq === "quarterly"
+      ? "quarterly TTM Adjusted FCF" : "annual Adjusted FCF") +
+      " over all available periods; " + m.nmPeriods +
+      " period(s) with non-positive Adjusted FCF are excluded as not meaningful (N/M).";
+  }
+  document.getElementById("tableNote").textContent = note;
 }
 
 /* -------------------- Charts (Chart.js) -------------------- */
@@ -2471,6 +2719,121 @@ function makeSeriesChart(canvasId, datasetName, labels, values, avg, med, cur, u
     }
   });
 }
+/* Historical P/Adjusted FCF chart (#3/#16). Shows the actual historical
+   values including gaps at N/M periods (#15) — no outlier removal. The
+   rich tooltip exposes the underlying inputs (market cap, Adjusted FCF)
+   and the discount to the historical median. */
+function makePafcfChart(canvasId, m, p) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || typeof Chart === "undefined") return null;
+  const labels = m.points.map((pt) => pt.label);
+  const values = m.points.map((pt) => pt.value);
+  const constArr = (v) => labels.map(() => (isFinite(v) ? v : null));
+  const g2d = canvas.getContext("2d");
+  const grad = g2d.createLinearGradient(0, 0, 0, (canvas.parentElement && canvas.parentElement.clientHeight) || 330);
+  grad.addColorStop(0, hexToRgba(p.line, 0.20));
+  grad.addColorStop(1, hexToRgba(p.line, 0.02));
+  const refLine = (label, color, dash, data) => ({
+    label, data, borderColor: color, borderDash: dash, borderWidth: 1.5,
+    pointRadius: 0, pointHitRadius: 0, tension: 0, fill: false
+  });
+  const nm = m.nm || !isFinite(m.current);
+  const curColor = nm ? cssVar("--muted")
+    : toneOfStatus(m.status) === "green" ? p.cur
+    : toneOfStatus(m.status) === "red" ? cssVar("--red") : cssVar("--amber");
+  const curVal = nm ? null : m.current;
+  return new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "P/Adjusted FCF", data: values, borderColor: p.line, backgroundColor: grad,
+          borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, pointHitRadius: 10,
+          tension: 0.25, fill: true, spanGaps: false
+        },
+        refLine("Average", p.avg, [7, 5], constArr(m.stats.mean)),
+        refLine("Median", p.med, [7, 5], constArr(m.stats.median)),
+        refLine("Current", curColor, [2, 4], constArr(curVal))
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { position: "top", labels: { usePointStyle: true, pointStyle: "line", color: p.text, boxWidth: 24 } },
+        tooltip: {
+          backgroundColor: "rgba(10, 15, 30, 0.94)",
+          titleColor: "#e6edf7",
+          bodyColor: "#cbd5e1",
+          borderColor: "rgba(255,255,255,0.12)",
+          borderWidth: 1,
+          padding: 11,
+          titleFont: { weight: "700" },
+          callbacks: {
+            title: function (items) { return items.length ? m.points[items[0].dataIndex].label : ""; },
+            label: function (ctx) {
+              if (ctx.datasetIndex === 0) {
+                return ctx.raw == null ? " P/Adjusted FCF: N/M" : " P/Adjusted FCF: " + fmtNum(ctx.raw, 2) + "x";
+              }
+              if (ctx.datasetIndex === 1) return " Average: " + fmtNum(ctx.raw) + "x";
+              if (ctx.datasetIndex === 2) return " Median: " + fmtNum(ctx.raw) + "x";
+              return " Current: " + (nm ? "N/M" : fmtNum(m.current, 2) + "x");
+            },
+            afterBody: function (items) {
+              if (!items.length) return [];
+              const pt = m.points[items[0].dataIndex];
+              const r = pt.row;
+              const out = [];
+              out.push("Market Cap: " + (isFinite(r.marketCap) ? fmtBn(r.marketCap) : "—"));
+              const af = m.freq === "quarterly" ? r.adjustedFcfTTM : r.adjustedFcf;
+              out.push((m.freq === "quarterly" ? "Adjusted FCF (TTM): " : "Adjusted FCF: ") +
+                (af != null && isFinite(af) ? fmtBn(af) : "—"));
+              if (pt.value == null) {
+                out.push("Adjusted FCF is negative or zero — P/Adjusted FCF is not meaningful.");
+              } else if (isFinite(m.stats.median)) {
+                const d = discount(m.stats.median, pt.value);
+                if (isFinite(d)) out.push("Discount to Median: " + fmtAbsPct(Math.abs(d)));
+              }
+              return out;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: p.text, maxTicksLimit: 8, maxRotation: 0 },
+          grid: { color: p.grid }
+        },
+        y: {
+          ticks: { color: p.text, callback: function (v) { return fmtNum(v) + "x"; } },
+          grid: { color: p.grid }
+        }
+      }
+    }
+  });
+}
+/* Dynamic interpretation under the chart (#17). */
+function pafcfNoteText(m) {
+  let txt;
+  if (m.nm || !isFinite(m.current)) {
+    txt = pafcfNmReason(m);
+  } else {
+    const c = classifyValuation(m.current, m.stats.median);
+    if (c.type === "discount") {
+      txt = "P/Adjusted FCF is currently " + fmtAbsPct(c.difference) +
+        " below its historical median, suggesting the stock is trading at a relatively attractive valuation compared with its historical cash-flow multiple.";
+    } else if (c.type === "premium") {
+      txt = "P/Adjusted FCF is currently " + fmtAbsPct(c.difference) +
+        " above its historical median, suggesting the stock is trading at a relatively expensive valuation compared with its historical cash-flow multiple.";
+    } else {
+      txt = "P/Adjusted FCF is broadly in line with its historical valuation.";
+    }
+  }
+  return "[" + (m.freq === "quarterly" ? "Quarterly · TTM" : "Annual") + "] " + txt +
+    " Period market cap = P/B at period end × reported equity (= price × shares); quarterly ratios use TTM Adjusted FCF; N/M marks periods with non-positive Adjusted FCF.";
+}
 function renderCharts(an) {
   destroyValuationCharts();
   const p = chartPalette();
@@ -2482,6 +2845,14 @@ function renderCharts(an) {
     an.pe.stats.mean, an.pe.stats.median, an.pe.current, "x", p, curPe);
   charts.pb = makeSeriesChart("chartPb", "P/B", pbLabels, an.pb.values,
     an.pb.stats.mean, an.pb.stats.median, an.pb.current, "x", p, curPb);
+  const noteEl = document.getElementById("pafcfNote");
+  if (an.hasPafcf) {
+    const m = activePafcf(an);
+    charts.pafcf = makePafcfChart("chartPafcf", m, p);
+    if (noteEl) noteEl.textContent = pafcfNoteText(m);
+  } else if (noteEl) {
+    noteEl.textContent = "";
+  }
 }
 
 /* -------------------- App state & flow -------------------- */
@@ -2530,6 +2901,10 @@ function renderAll(an, data) {
   document.getElementById("dividendCard").classList.toggle("hidden", isIndex);
   document.getElementById("fundSection").classList.toggle("hidden", isIndex);
   document.getElementById("dividendSection").classList.toggle("hidden", isIndex);
+  const showPafcf = !isIndex && !!an.hasPafcf;
+  document.getElementById("heroPafcf").classList.toggle("hidden", !showPafcf);
+  document.getElementById("compPafcf").classList.toggle("hidden", !showPafcf);
+  document.getElementById("pafcfSection").classList.toggle("hidden", !showPafcf);
   if (!isIndex) {
     renderPriceCard(data);
     renderDividendCard(data);
@@ -2552,7 +2927,16 @@ function setFundPeriod(p) {
   document.querySelectorAll("[data-fperiod]").forEach(function (b) {
     b.classList.toggle("active", b.dataset.fperiod === p);
   });
-  if (state.lastData && !state.lastData.isIndex) renderFundSection(state.lastData);
+  if (state.lastData && !state.lastData.isIndex) {
+    renderFundSection(state.lastData);
+    /* The toggle also drives the P/Adjusted FCF series (#10). */
+    if (state.analysis && state.analysis.hasPafcf) {
+      renderHero(state.analysis);
+      renderCompCards(state.analysis);
+      renderTable(state.analysis);
+      renderCharts(state.analysis);
+    }
+  }
 }
 
 async function analyze() {
