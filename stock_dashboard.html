@@ -410,6 +410,88 @@ main { max-width: 1240px; margin: 0 auto; padding: 22px 18px 44px; background: v
 .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 18px; margin-bottom: 18px; }
 .chart-wrap { position: relative; height: 330px; }
 
+/* ================= Historical valuation price range ================= */
+.pr-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pr-title { margin-bottom: 0; display: flex; align-items: center; gap: 8px; }
+.pr-info {
+  font: inherit; font-size: 11px; font-weight: 800; line-height: 1;
+  width: 19px; height: 19px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--card-2); color: var(--muted);
+  cursor: pointer; padding: 0;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.pr-info:hover { color: var(--accent); border-color: var(--accent); }
+.pr-mos-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); display: inline-flex; align-items: center; gap: 8px; }
+.pr-mos-select {
+  font: inherit; font-size: 13px; font-weight: 700; color: var(--text);
+  background: var(--card-2); border: 1px solid var(--border); border-radius: 9px;
+  padding: 6px 10px; cursor: pointer;
+}
+.pr-mos-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pr-tooltip {
+  margin-top: 12px; padding: 12px 15px; border-radius: 10px;
+  background: var(--card-2); border: 1px solid var(--border-soft);
+  font-size: 12.5px; color: var(--muted); line-height: 1.55;
+}
+.pr-tooltip b { color: var(--text); }
+.pr-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0 6px; }
+.pr-stat {
+  background: var(--card-2); border: 1px solid var(--border-soft); border-radius: 10px;
+  padding: 12px 15px; display: flex; flex-direction: column; gap: 4px;
+}
+.pr-stat-center { justify-content: center; align-items: center; text-align: center; }
+.pr-stat-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.pr-stat-value { font-size: 23px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.2; }
+.pr-stat-value.below { color: var(--green); }
+.pr-stat-value.above { color: var(--red); }
+.pr-stat-value.neutral { color: var(--muted); }
+.pr-stat-sub { font-size: 11px; color: var(--muted); }
+.pr-unit { font-size: 13px; font-weight: 600; color: var(--muted); }
+.pr-band { position: relative; height: 56px; margin: 30px 6px 4px; }
+/* One continuous heat line: green (entry) -> amber (fair) -> red (expensive).
+   Gradient stops are injected inline from computed percentages. */
+.pr-track {
+  position: absolute; top: 20px; left: 0; right: 0; height: 12px;
+  border-radius: 6px; border: 1px solid var(--border);
+}
+.pr-tick { position: absolute; top: 32px; height: 8px; width: 1px; background: var(--faint); opacity: 0.65; }
+.pr-tick span {
+  position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+  font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap;
+}
+.pr-mk-med {
+  position: absolute; top: 15px; width: 3px; height: 22px;
+  background: var(--accent); border-radius: 2px;
+  transform: translateX(-50%); z-index: 2;
+}
+/* Single-element median indicator: the label hangs off the same bar,
+   baseline-aligned with the neighbouring tick labels. */
+.pr-mk-med span {
+  position: absolute; top: 25px; left: 50%; transform: translateX(-50%);
+  font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap;
+}
+.pr-cur {
+  position: absolute; top: 19px; width: 13px; height: 13px; border-radius: 50%;
+  background: var(--accent); border: 3px solid var(--card);
+  transform: translateX(-50%); z-index: 3;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+}
+.pr-cur-label {
+  position: absolute; top: -15px; transform: translateX(-50%);
+  font-size: 11.5px; font-weight: 800; color: var(--accent); white-space: nowrap;
+}
+.pr-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--muted); margin: 10px 6px 0; }
+.pr-sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.pr-sw-green { background: var(--green-bg); border: 1px solid var(--green-border); }
+.pr-sw-amber { background: var(--amber-bg); border: 1px solid var(--amber-border); }
+.pr-sw-red { background: var(--red-bg); border: 1px solid var(--red-border); }
+.pr-sw-gray { background: var(--card-2); border: 1px solid var(--border); }
+.pr-row-combined td { border-top: 2px solid var(--border); font-weight: 700; }
+.pr-msg { margin-top: 12px; padding: 10px 14px; border-radius: 10px; font-size: 13.5px; font-weight: 600; border: 1px solid transparent; }
+.pr-msg-green { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
+.pr-msg-amber { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-border); }
+.pr-msg-red { background: var(--red-bg); color: var(--red); border-color: var(--red-border); }
+
 /* ================= Table ================= */
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
@@ -526,6 +608,35 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
         <span class="assess-badge tone-gray" id="overallBadge">—</span>
         <p class="hero-sentence" id="heroSentence"></p>
       </div>
+    </section>
+
+    <section class="card hidden" id="priceRangeSection" aria-label="Historical valuation price range">
+      <div class="pr-head">
+        <div class="section-title pr-title">Historical Valuation Price Range
+          <button type="button" class="pr-info" id="prInfoBtn" aria-label="How this is calculated">?</button>
+        </div>
+        <label class="pr-mos-label">Margin of Safety
+          <select id="prMosSelect" class="pr-mos-select" aria-label="Margin of safety">
+            <option value="0.10">10%</option>
+            <option value="0.15">15%</option>
+            <option value="0.20" selected>20%</option>
+            <option value="0.25">25%</option>
+            <option value="0.30">30%</option>
+          </select>
+        </label>
+      </div>
+      <div id="prTooltip" class="pr-tooltip hidden">
+        <b>How this is calculated.</b> Historical multiples are applied to the stock's latest
+        available fundamentals: P/E fair value = current EPS × historical P/E; P/B fair value =
+        current BVPS × historical P/B. EPS and BVPS are derived from the same live feed as the
+        displayed ratios (price ÷ ratio), so inputs and history never drift apart. The median is
+        the primary reference because it is less sensitive to extreme historical valuation periods;
+        the average is shown for context. For banks the combined value weights P/B 60% / P/E 40%;
+        other stocks weight both 50/50. A margin of safety (default 20%) turns the fair range into
+        a conservative attractive-entry range. This is a relative valuation method based on the
+        stock's own history — not a DCF or intrinsic-value calculation.
+      </div>
+      <div id="prBody"></div>
     </section>
 
     <section class="card" id="fundSection" aria-label="Business and cash flow fundamentals">
@@ -696,6 +807,13 @@ const MIN_FUND_ROWS = 2; // minimum rows for a fundamentals panel
 const FAIR_TOLERANCE = 0.05; // ±5% — premium side only: classify as Fair within this band
 const CHEAP_DISCOUNT = 0.10; // discount >10% — classify as Cheap; a 0–10% discount stays Fair
 const PERIOD_LABELS = { "3y": "3 Years", "5y": "5 Years", "10y": "10 Years", "all": "All Available Data" };
+/* Historical valuation-based price range weighting (#13): banks lean on P/B
+   because earnings are cyclical for lenders; make weights explicit so they
+   are easy to change later. */
+const VALUATION_WEIGHTS = {
+  bank: { pe: 0.40, pb: 0.60 },
+  nonBank: { pe: 0.50, pb: 0.50 }
+};
 const INDEX_TICKERS = ["VNINDEX", "HNX", "HNXINDEX", "UPCOM", "UPCOMINDEX", "VN30"];
 const BANK_TICKERS = new Set(
   "ABB ACB BAB BID BVB CTG EIB HDB KLB LPB MBB MSB NAB NVB OCB PGB SGB SHB SSB STB TCB TPB VAB VCB VIB VPB VBB".split(" ")
@@ -1980,7 +2098,7 @@ function buildAnalysis(data, period) {
   const pe = makeMetric(peClean, peStats, data.currentPE);
   const pb = makeMetric(pbClean, pbStats, data.currentPB);
   const pafcf = extractPafcfMetrics(data);
-  return {
+  const analysis = {
     ticker: data.ticker,
     name: data.name,
     isSynthetic: !!data.isSynthetic,
@@ -1994,6 +2112,8 @@ function buildAnalysis(data, period) {
     insufficient: peStats.count < MIN_OBSERVATIONS || pbStats.count < MIN_OBSERVATIONS,
     assessment: assessValuation(pe, pb)
   };
+  analysis.priceRange = buildPriceRange(analysis, data);
+  return analysis;
 }
 
 /* P/Adjusted FCF metric objects (#7/#8/#14). Statistics use valid
@@ -2071,6 +2191,125 @@ function pafcfNmReason(m) {
   if (m.currentAfcfTtm <= 0)
     return "Adjusted FCF is negative or zero, therefore P/Adjusted FCF is not meaningful.";
   return "Market capitalization data is unavailable.";
+}
+
+/* -------------------- Historical valuation price range --------------------
+   Implied price = CURRENT fundamental per share x HISTORICAL multiple (#20).
+   EPS and BVPS are derived from the same live feed as the history via the
+   identities  EPS = price / P/E  and  BVPS = price / P/B, i.e. exactly the
+   fundamentals behind the current ratios shown in the hero (#21/#22) - no
+   second source to drift out of sync. Negative earnings/equity make the
+   method N/M instead of producing a nonsense price (#23). The historical
+   MEDIAN is the primary reference because it resists outlier periods (#15);
+   language deliberately says "historical valuation-based" - this is a
+   relative reference, not an intrinsic/guaranteed value (#28). */
+
+function prMethod(basePerShare, medX, avgX) {
+  if (!isFinite(basePerShare) || basePerShare <= 0 ||
+      !isFinite(medX) || !isFinite(avgX)) return { valid: false };
+  return { valid: true, base: basePerShare, medP: basePerShare * medX, avgP: basePerShare * avgX };
+}
+/* #9: position of the current price relative to entry / fair bands (#19 message set). */
+function classifyPricePosition(price, rng, ent) {
+  if (price < ent.lo)
+    return { key: "below-entry", label: "BELOW ATTRACTIVE ENTRY", tone: "green",
+      msg: "Price is below the historical valuation-based attractive entry range." };
+  if (price <= ent.hi)
+    return { key: "in-entry", label: "ATTRACTIVE ENTRY", tone: "green",
+      msg: "Price is within the historical valuation-based attractive entry range." };
+  if (price < rng.lo)
+    return { key: "below-fair", label: "BELOW FAIR VALUE", tone: "amber",
+      msg: "Price is below historical median fair value but above the conservative entry range." };
+  if (price <= rng.hi)
+    return { key: "in-fair", label: "REASONABLE VALUE", tone: "amber",
+      msg: "Price is broadly aligned with the stock's historical valuation." };
+  if (price <= rng.hi * 1.3)
+    return { key: "above-fair", label: "ABOVE HISTORICAL VALUATION", tone: "red",
+      msg: "Price is above the stock's historical valuation range." };
+  return { key: "far-above", label: "SIGNIFICANTLY ABOVE HISTORICAL VALUATION", tone: "red",
+    msg: "Price is far above the stock's historical valuation range." };
+}
+function buildPriceRange(an, data) {
+  const out = { available: false, reason: "", sector: null, weightsUsed: null,
+    eps: null, bvps: null, pe: null, pb: null, combined: null, range: null,
+    entry: null, mos: null, status: null, discount: null, crossCheck: null };
+  const price = (data && data.price && isFinite(data.price.price)) ? data.price.price : null;
+  if (!price || !an || !an.pe || !an.pb) {
+    out.reason = "Current price unavailable - implied valuation prices need today's price.";
+    return out;
+  }
+  /* Current fundamentals per share from the current multiples (#20-#22). */
+  const eps = isFinite(an.pe.current) && an.pe.current > 0 ? price / an.pe.current : NaN;
+  const bvps = isFinite(an.pb.current) && an.pb.current > 0 ? price / an.pb.current : NaN;
+  const pe = prMethod(eps, an.pe.stats.median, an.pe.stats.mean);
+  const pb = prMethod(bvps, an.pb.stats.median, an.pb.stats.mean);
+  out.eps = isFinite(eps) ? eps : null;
+  out.bvps = isFinite(bvps) ? bvps : null;
+  out.pe = pe; out.pb = pb;
+  const sector = (data.sector === "bank") ? "bank" : "nonBank";
+  out.sector = sector;
+  if (!pe.valid && !pb.valid) {
+    out.reason = "Historical multiple valuation unavailable: both EPS and BVPS are non-positive.";
+    return out;
+  }
+  let w = Object.assign({}, VALUATION_WEIGHTS[sector]);
+  out.weightsUsed = w;
+  let singleLabel = null;
+  if (pe.valid && !pb.valid) {
+    w = { pe: 1, pb: 0 }; singleLabel = "Fair value based on P/E only";
+  } else if (!pe.valid && pb.valid) {
+    w = { pe: 0, pb: 1 }; singleLabel = "Fair value based on P/B only";
+  }
+  out.weightsUsed = w;
+  /* Invalid methods contribute nothing (their weight was renormalised away);
+     this keeps combined values finite on the single-method paths (#24). */
+  const combMed = (pe.valid ? w.pe * pe.medP : 0) + (pb.valid ? w.pb * pb.medP : 0);
+  const combAvg = (pe.valid ? w.pe * pe.avgP : 0) + (pb.valid ? w.pb * pb.avgP : 0);
+  out.combined = { med: combMed, avg: combAvg };
+  /* Combined reasonable band (#4/#5): overlap of the two methods' median..avg
+     spans; when they diverge, fall back to a clearly-labelled reference span
+     instead of a misleadingly narrow "fair value". */
+  let rng, divergent = false;
+  if (pe.valid && pb.valid) {
+    const lo = Math.max(pe.medP, pb.medP);
+    const hi = Math.min(pe.avgP, pb.avgP);
+    if (hi >= lo) rng = { lo, hi, type: "fair", label: "Historical Valuation-Based Fair Value" };
+    else {
+      divergent = true;
+      const all = [pe.medP, pe.avgP, pb.medP, pb.avgP];
+      rng = { lo: Math.min.apply(null, all), hi: Math.max.apply(null, all),
+        type: "reference", label: "Reference Range (valuation methods diverge)" };
+    }
+  } else {
+    const m = pe.valid ? pe : pb;
+    rng = { lo: m.medP, hi: m.avgP, type: "fair", label: singleLabel };
+  }
+  out.range = rng; out.divergent = divergent; out.singleMethodLabel = singleLabel;
+  const mos = isFinite(state.marginOfSafety) ? state.marginOfSafety : 0.20;
+  out.mos = mos;
+  out.entry = { lo: rng.lo * (1 - mos), hi: rng.hi * (1 - mos) };
+  out.status = classifyPricePosition(price, rng, out.entry);
+  out.discount = combMed > 0 ? (price / combMed - 1) : NaN;
+  /* Cash-flow cross-check for corporates (#26): shown separately, never merged. */
+  try {
+    if (an.hasPafcf && an.pafcf) {
+      const m = activePafcf(an);
+      if (m && !m.nm && isFinite(m.currentMarketCap) && m.currentMarketCap > 0 &&
+          isFinite(m.currentAfcfTtm) && m.currentAfcfTtm > 0 &&
+          isFinite(m.stats.median)) {
+        const perShare = m.currentAfcfTtm / m.currentMarketCap * price;
+        if (perShare > 0) {
+          out.crossCheck = {
+            basis: m.freq === "quarterly" ? "TTM" : "annual",
+            medP: perShare * m.stats.median,
+            avgP: isFinite(m.stats.mean) ? perShare * m.stats.mean : null
+          };
+        }
+      }
+    }
+  } catch (e) { /* cross-check stays absent */ }
+  out.available = true;
+  return out;
 }
 
 /* -------------------- Rendering helpers -------------------- */
@@ -2873,10 +3112,94 @@ function renderCharts(an) {
   }
 }
 
+/* -------------------- Historical valuation price range -------------------- */
+function prVnd(v) { return isFinite(v) ? fmtVND(Math.round(v)) : "—"; }
+function renderPriceRange(an, data) {
+  const body = document.getElementById("prBody");
+  const pr = an && an.priceRange;
+  const livePrice = (data && data.price && isFinite(data.price.price)) ? data.price.price : null;
+  if (!pr || !pr.available || !livePrice) {
+    body.innerHTML = '<div class="fund-unavail"><b>Data unavailable.</b> ' +
+      ((pr && pr.reason) || "Historical valuation-based pricing needs a current price and valid multiples.") + "</div>";
+    return;
+  }
+  const price = livePrice;
+  const wTxt = "P/E " + Math.round(pr.weightsUsed.pe * 100) + "% · P/B " + Math.round(pr.weightsUsed.pb * 100) + "%";
+  /* --- Summary strip --- */
+  const disc = isFinite(pr.discount) ? relText(pr.combined.med, price) : null;
+  let html = '<div class="pr-summary">' +
+    '<div class="pr-stat"><div class="pr-stat-label">Current Price</div>' +
+    '<div class="pr-stat-value">' + fmtVND(price) + ' <span class="pr-unit">VND</span></div></div>' +
+    '<div class="pr-stat"><div class="pr-stat-label">Combined Median Fair Value</div>' +
+    '<div class="pr-stat-value">' + prVnd(pr.combined.med) + ' <span class="pr-unit">VND</span></div>' +
+    '<div class="pr-stat-sub">weighted ' + wTxt + "</div></div>" +
+    '<div class="pr-stat"><div class="pr-stat-label">vs Median Fair Value</div>' +
+    '<div class="pr-stat-value ' + (disc ? disc.cls : "") + '">' + (disc ? disc.text : "—") + "</div>" +
+    '<div class="pr-stat-sub">historical valuation reference</div></div>' +
+    '<div class="pr-stat pr-stat-center"><span class="assess-badge tone-' + pr.status.tone + '">' + pr.status.label + "</span>" +
+    '<div class="pr-stat-sub">Margin of Safety ' + Math.round(pr.mos * 100) + "%</div></div>" +
+    "</div>";
+  /* --- Valuation band: ONE continuous gradient line (green -> amber -> red),
+         matching the app's Cheap/Fair/Expensive color semantics (#8). --- */
+  const domLo = Math.min(pr.entry.lo, price) * 0.97;
+  const domHi = Math.max(pr.range.hi, price, pr.entry.hi) * 1.02;
+  const span = domHi - domLo || 1;
+  const pctOf = (v) => clamp(((v - domLo) / span) * 100, 0, 100);
+  const zEntryL = pctOf(pr.entry.lo), zEntryR = pctOf(pr.entry.hi);
+  const zFairL = pctOf(pr.range.lo), zFairR = pctOf(pr.range.hi);
+  const grad = "linear-gradient(90deg," +
+    "var(--green-bg) 0%," +
+    "var(--green-border) " + zEntryL.toFixed(2) + "%," +
+    "var(--green-border) " + zEntryR.toFixed(2) + "%," +
+    "var(--amber-bg) " + Math.max(zEntryR, zFairL).toFixed(2) + "%," +
+    "var(--amber-bg) " + zFairR.toFixed(2) + "%," +
+    "var(--red-border) 100%)";
+  html += '<div class="pr-band">' +
+    '<div class="pr-track" style="background:' + grad + '"></div>' +
+    '<div class="pr-tick" style="left:' + zEntryL + '%"><span>' + prVnd(pr.entry.lo / 1000) + "k</span></div>" +
+    '<div class="pr-tick" style="left:' + zEntryR + '%"><span>' + prVnd(pr.entry.hi / 1000) + "k</span></div>" +
+    '<div class="pr-tick" style="left:' + zFairR + '%"><span>' + prVnd(pr.range.hi / 1000) + "k</span></div>" +
+    '<div class="pr-mk-med" style="left:' + pctOf(pr.combined.med) + '%"><span>Median</span></div>' +
+    '<div class="pr-cur" style="left:' + pctOf(price) + '%" title="Current price"></div>' +
+    '<div class="pr-cur-label" style="left:' + pctOf(price) + '%">' + fmtVND(price) + "</div>" +
+    "</div>" +
+    '<div class="pr-legend">' +
+      '<span><i class="pr-sw pr-sw-green"></i>Attractive Entry</span>' +
+      '<span><i class="pr-sw pr-sw-amber"></i>Reasonable Value</span>' +
+      '<span><i class="pr-sw pr-sw-red"></i>Expensive</span>' +
+      (pr.divergent ? '<span><i class="pr-sw pr-sw-gray"></i>Reference Range - methods diverge</span>' : "") +
+    "</div>";
+  /* --- Methods table --- */
+  const row = (name, med, avg, extraCls) =>
+    "<tr" + (extraCls ? ' class="' + extraCls + '"' : "") + "><td>" + name + "</td>" +
+    '<td class="num">' + prVnd(med) + "</td><td class=\"num\">" + prVnd(avg) + "</td>" +
+    "<td>" + (isFinite(med) && isFinite(avg) ? prVnd(Math.min(med, avg)) + " – " + prVnd(Math.max(med, avg)) : "—") + "</td></tr>";
+  html += '<div class="table-wrap"><table><thead><tr>' +
+    "<th>Method</th><th class=\"num\">Median</th><th class=\"num\">Average</th><th>Range (VND/share)</th>" +
+    "</tr></thead><tbody>";
+  html += pr.pe.valid ? row("P/E implied (EPS " + fmtVND(Math.round(pr.eps)) + ")", pr.pe.medP, pr.pe.avgP) : '<tr><td>P/E implied</td><td class="num" colspan="3">N/M — earnings non-positive</td></tr>';
+  html += pr.pb.valid ? row("P/B implied (BVPS " + fmtVND(Math.round(pr.bvps)) + ")", pr.pb.medP, pr.pb.avgP) : '<tr><td>P/B implied</td><td class="num" colspan="3">N/M — book value non-positive</td></tr>';
+  html += '<tr class="pr-row-combined">' +
+    "<td>Combined (" + wTxt.replace(" · ", " | ") + ")</td>" +
+    '<td class="num">' + prVnd(pr.combined.med) + '</td><td class="num">' + prVnd(pr.combined.avg) + "</td>" +
+    "<td>" + (pr.divergent ? "methods diverge — reference span below" : prVnd(pr.range.lo) + " – " + prVnd(pr.range.hi)) + "</td></tr>";
+  if (pr.crossCheck) {
+    html += '<tr><td>P/AFCF cross-check (' + pr.crossCheck.basis + ", not in combined)</td>" +
+      '<td class="num">' + prVnd(pr.crossCheck.medP) + '</td><td class="num">' +
+      (pr.crossCheck.avgP != null ? prVnd(pr.crossCheck.avgP) : "—") + "</td><td>cash flow reference</td></tr>";
+  }
+  html += "</tbody></table></div>";
+  /* --- Notes --- */
+  html += '<p class="table-note">' + pr.range.label + ". Median is used as the primary historical valuation reference because it is less sensitive to extreme valuation periods.</p>";
+  html += '<p class="pr-msg pr-msg-' + pr.status.tone + '">' + pr.status.msg + "</p>";
+  body.innerHTML = html;
+}
+
 /* -------------------- App state & flow -------------------- */
 const state = {
   ticker: null, period: "5y", mode: "stock", lastStockTicker: null,
-  analysis: null, lastData: null, fundPeriod: "yearly"
+  analysis: null, lastData: null, fundPeriod: "yearly",
+  marginOfSafety: 0.20
 };
 
 function setLoading(on) {
@@ -2923,6 +3246,8 @@ function renderAll(an, data) {
   document.getElementById("heroPafcf").classList.toggle("hidden", !showPafcf);
   document.getElementById("compPafcf").classList.toggle("hidden", !showPafcf);
   document.getElementById("pafcfSection").classList.toggle("hidden", !showPafcf);
+  const showPr = !isIndex && !!an.priceRange && an.priceRange.available;
+  document.getElementById("priceRangeSection").classList.toggle("hidden", !showPr);
   if (!isIndex) {
     renderPriceCard(data);
     renderDividendCard(data);
@@ -2937,6 +3262,7 @@ function renderAll(an, data) {
   renderRanges(an);
   renderTable(an);
   renderCharts(an);
+  if (showPr) renderPriceRange(an, data);
   document.getElementById("content").classList.remove("hidden");
 }
 
@@ -3062,6 +3388,17 @@ function initApp() {
   });
   document.getElementById("modeStock").addEventListener("click", function () { setMode("stock"); });
   document.getElementById("modeIndex").addEventListener("click", function () { setMode("index"); });
+  document.getElementById("prMosSelect").addEventListener("change", function () {
+    state.marginOfSafety = parseFloat(this.value) || 0.20;
+    if (state.analysis && state.lastData) {
+      /* Rebuild the model - the cached one was built with the previous MoS. */
+      state.analysis.priceRange = buildPriceRange(state.analysis, state.lastData);
+      renderPriceRange(state.analysis, state.lastData);
+    }
+  });
+  document.getElementById("prInfoBtn").addEventListener("click", function () {
+    document.getElementById("prTooltip").classList.toggle("hidden");
+  });
   document.querySelectorAll(".chip[data-ticker]").forEach(function (b) {
     b.addEventListener("click", function () {
       if (b.dataset.ticker === "VNINDEX") { setMode("index"); return; }
