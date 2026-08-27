@@ -4,7 +4,6 @@
 
 - The entire deliverable is `stock_dashboard.html`: a single-file Vietnam stock dashboard (valuation, dividends, fundamentals). No build system, no package.json, no in-repo tests, no CI.
 - Rename history: created as `index.html`, user-renamed to `pepb_dashboard.html`, then to `stock_dashboard.html`. Old harness/test files in `%TEMP%` may reference the old names.
-- `stock-dashboard.json` at the root is an exported OpenCode chat-session log (~6 MB), not app data or config — do not treat it as a data source or edit it.
 - Scope: works for individual stocks AND index tickers (`INDEX_TICKERS`: VNINDEX, VN30, HNXINDEX, ...). The dashboard adapts by sector: banks (detected via `BANK_TICKERS` set fallback) get ROE/NIM/NPL/leverage charts and must NOT show ROIC/FCF/OCF/D/E/Capex/P-AFCF; non-banks get the reverse set (ROIC, Adjusted FCF, OCF, Capex, D/E plus the P/Adjusted FCF valuation metric/chart; no NIM/NPL). All fundamental charts share ONE Quarterly/Yearly toggle (default Yearly); it also drives the P/Adjusted-FCF series.
 - All app code lives in ONE inline `<script>` block (the other `<script src=...>` is the Chart.js 4.4.1 CDN tag). CSS is inline in `<style>`. File must stay UTF-8 **without BOM**; UI text is Vietnamese — never re-encode or "fix" characters (em-dashes `—` are intentional; mojibake like `Ã` means you broke encoding).
 
@@ -45,5 +44,8 @@ Node-harness gotchas: append test code INSIDE the same `eval(code + ...)` string
 ## Product decisions from the user (do not undo)
 
 - No default ticker on first load; empty input must fail silently (no error alert). The "Invalid ticker format" error appears only for non-empty invalid input (guard at top of `analyze()`).
+- Quick picks are `TPB VIB VPB TCB PPH VEA VNM ACB` (8 chips in `.suggestions`); keep order and do not re-add `VNINDEX`.
+- Default valuation window is `10Y` (period selector `data-period="10y"` active + `state.period = "10y"`); fundamentals toggle defaults to `Yearly`. Do not revert to `5Y`.
+- Price Range MoS defaults to `20%` (`state.marginOfSafety = 0.20` + `<option value="0.20" selected>`); keep both in sync.
 - Current P/E and P/B display with 2 decimal places everywhere they appear as "current" (hero, stats table, comparison card, range card, chart Current tooltip); averages/medians/axes stay at 1.
 - Design-token locks (polish pass): radius scale is documented above `.card` (cards 14 via `--radius`, panels/status 12, containers/controls 10, buttons/inputs 9, segmented pills 8, label/badge pills 999). Light-theme status tokens are AA-tuned (`--green #047857`, `--red #cc2222`, `--orange #c2410c`, `--faint == --muted`) — do NOT lighten them back; dark `--faint` is `#75879f`. Raw hex outside token blocks is limited to: always-dark topbar/loading whites, the brand-mark gradient, and the gauge heat-scale mid-stop. Interactive controls have a global `:focus-visible` ring; decorative transitions collapse under `prefers-reduced-motion` (the loading spinner is exempt as essential feedback).
