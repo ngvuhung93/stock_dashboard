@@ -563,8 +563,8 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
       </div>
       <div class="seg" role="group" aria-label="Analysis period">
         <button class="seg-btn" data-period="3y" type="button">3Y</button>
-        <button class="seg-btn active" data-period="5y" type="button">5Y</button>
-        <button class="seg-btn" data-period="10y" type="button">10Y</button>
+        <button class="seg-btn" data-period="5y" type="button">5Y</button>
+        <button class="seg-btn active" data-period="10y" type="button">10Y</button>
         <button class="seg-btn" data-period="all" type="button">All</button>
       </div>
     </div>
@@ -575,12 +575,13 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
     <div class="suggestions">
       <span>Quick picks:</span>
       <button class="chip" data-ticker="TPB" type="button">TPB</button>
-      <button class="chip" data-ticker="TCB" type="button">TCB</button>
       <button class="chip" data-ticker="VIB" type="button">VIB</button>
-      <button class="chip" data-ticker="ACB" type="button">ACB</button>
-      <button class="chip" data-ticker="VNM" type="button">VNM</button>
+      <button class="chip" data-ticker="VPB" type="button">VPB</button>
+      <button class="chip" data-ticker="TCB" type="button">TCB</button>
+      <button class="chip" data-ticker="PPH" type="button">PPH</button>
       <button class="chip" data-ticker="VEA" type="button">VEA</button>
-      <button class="chip" data-ticker="VNINDEX" type="button">VN-Index</button>
+      <button class="chip" data-ticker="VNM" type="button">VNM</button>
+      <button class="chip" data-ticker="ACB" type="button">ACB</button>
     </div>
   </section>
 
@@ -3197,7 +3198,7 @@ function renderPriceRange(an, data) {
 
 /* -------------------- App state & flow -------------------- */
 const state = {
-  ticker: null, period: "5y", mode: "stock", lastStockTicker: null,
+  ticker: null, period: "10y", mode: "stock", lastStockTicker: null,
   analysis: null, lastData: null, fundPeriod: "yearly",
   marginOfSafety: 0.20
 };
