@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vietnam Stock Dashboard — Valuation, Dividends &amp; Fundamentals</title>
+<title>Vietnam Equity Hub — Valuation, Dividends &amp; Fundamentals</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -204,16 +204,18 @@ main { max-width: 1240px; margin: 0 auto; padding: 22px 18px 44px; background: v
 .alert.warn { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); }
 .alert.info { background: var(--green-bg); color: var(--green); border-color: var(--green); }
 .loading {
-  position: fixed; inset: 0; z-index: 100;
-  background: var(--overlay);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
-  color: #fff; font-weight: 600;
-  backdrop-filter: blur(2px);
+  position: fixed; top: 18px; left: 50%; transform: translateX(-50%);
+  z-index: 100;
+  background: var(--card); border: 1px solid var(--border); color: var(--text);
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 18px; border-radius: 999px; box-shadow: var(--shadow);
+  font-size: 13px; font-weight: 600;
+  pointer-events: none;
 }
 .spinner {
-  width: 44px; height: 44px; border-radius: 50%;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff; animation: spin 0.9s linear infinite;
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2.5px solid var(--border); border-top-color: var(--accent);
+  animation: spin 0.9s linear infinite; flex-shrink: 0;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -734,6 +736,15 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
   width: 240px; box-shadow: var(--shadow); z-index: 10; white-space: normal;
 }
 .vh-tooltip-box:hover .vh-tip { display: block; }
+.vh-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.vh-pagination-info { color: var(--muted); font-size: 12.5px; font-weight: 500; }
+.vh-pagination-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.vh-page-btn { font: inherit; font-size: 12.5px; font-weight: 600; background: var(--card-2); color: var(--text); border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; cursor: pointer; min-width: 36px; transition: border-color 0.15s, color 0.15s, background 0.15s; }
+.vh-page-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.vh-page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.vh-page-btn:hover:not(:disabled):not(.active) { border-color: var(--accent); color: var(--accent); }
+.vh-page-size { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); font-weight: 500; }
+.vh-page-size select { font: inherit; font-size: 12.5px; font-weight: 600; background: var(--card-2); border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; color: var(--text); cursor: pointer; }
 
 @media (max-width: 640px) {
   .topbar h1 { font-size: 17px; }
@@ -752,7 +763,7 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
   <div class="brand">
     <div class="brand-mark">V</div>
     <div>
-      <h1>Vietnam Stock Dashboard</h1>
+      <h1>Vietnam Equity Hub</h1>
       <p class="subtitle">Valuation · price · dividends · fundamentals</p>
     </div>
   </div>
@@ -797,11 +808,6 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
         </div>
       </div>
 
-      <div class="vh-philosophy">
-        <div class="vh-philosophy-icon">◈</div>
-        <div><strong>We find businesses worth investigating. Not buy recommendations.</strong><br>Use this screen as a starting point for deep research — financials, filings, and competitive position — before any investment decision.</div>
-      </div>
-
       <div class="vh-flow" aria-label="Investment process">
         <span class="vh-flow-step active">Quality Business</span><span class="vh-flow-arrow">→</span>
         <span class="vh-flow-step">Earnings Growth</span><span class="vh-flow-arrow">→</span>
@@ -819,7 +825,20 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
       <div class="vh-criteria" id="vhCriteriaBox"></div>
     </section>
 
-     <section class="card">
+     <section class="card" id="vhUniverseSection">
+      <div class="section-title">Universe <span class="pill-info" id="vhUniverseBadge">50 stocks</span></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="vh-filter-group"><label>Stocks to scan</label><select id="vhUniverseSel"><option value="50" selected>Default — 50</option><option value="100">100</option><option value="150">150</option><option value="200">200</option><option value="all">All — 200+</option><option value="custom">Custom …</option></select></div>
+        <button class="btn-analyze" id="vhRescanBtn" type="button">Scan Universe</button>
+        <span class="table-note" id="vhUniverseNote" style="margin:0;align-self:center;"></span>
+      </div>
+      <div id="vhCustomWrap" class="hidden" style="margin-top:12px;">
+        <label style="font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--muted);text-transform:uppercase;">Custom tickers (comma or space separated)</label>
+        <textarea id="vhCustomInput" rows="3" style="width:100%;margin-top:6px;padding:10px;border:1px solid var(--border);border-radius:9px;background:var(--card-2);color:var(--text);font:inherit;font-size:13px;" placeholder="e.g. VEA, PPH, VNM, FPT, HPG ..."></textarea>
+      </div>
+    </section>
+
+    <section class="card">
       <div class="section-title">Filters</div>
       <div class="vh-filters" id="vhFilters">
         <div class="vh-filter-group"><label>5Y EPS CAGR</label><select id="vhFilterCagr"><option value="0">Any</option><option value="0.05">&gt; 5%</option><option value="0.08">&gt; 8%</option><option value="0.10" selected>&gt; 10%</option><option value="0.12">&gt; 12%</option><option value="0.15">&gt; 15%</option><option value="0.20">&gt; 20%</option></select></div>
@@ -843,6 +862,7 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
     <section class="card">
       <div class="section-title">All Qualified Stocks <span class="pill-info" id="vhCountBadge"></span></div>
       <div class="vh-table-wrap" id="vhTableWrap"></div>
+      <div class="vh-pagination" id="vhPagination"></div>
     </section>
   </div>
 
@@ -1028,7 +1048,7 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
 <script>
 "use strict";
 /* =====================================================================
-   VIETNAM STOCK DASHBOARD — single-file application
+   VIETNAM EQUITY HUB — single-file application
    ---------------------------------------------------------------------
    Data source architecture:
    - `getStockData(ticker, period)` is the ONLY entry point the UI uses.
@@ -1184,6 +1204,44 @@ const VH_UNIVERSE = [
   "TPB","TCB","VIB","ACB","MBB","VCB","BID","CTG","STB","VPB","HDB","MSB",
   "DGC","DCM","DPM","GMD","HAX","HT1","NKG","HSG","VHC","ANV","CMG","CTR","VGI","QNS","MSN","VJC"
 ];
+const VH_UNIVERSE_FULL = [
+  ...VH_UNIVERSE,
+  "BCM","BVH","CII","CTD","CTR","DBC","DGW","DRH","DXS","EIB","FMC","FRT","GDT","GEG","GEX","GIL","GMD","HAG","HAH","HBC","HDC","HDG","HHP","HHS","HVN","IDI","ITA","KDC","KOS","LCG","LDG","LPB","NAF","NT2","OCB","PET","PHR","PPC","PTB","PVD","PVT","SBT","SCR","SJS","SKG","SSI","SZC","TCH","TDM","VCG","VGC","VPI","BVS","CEO","IDC","MBS","PVS","SHS","BCC","BWE","C4G","CRE","CTF","DHC","DLG","FCN","GAS","GVR","HAG","HCM","HNG","HSG","KBC","MSN","NLG","OCB","PDR","PNJ","POW","SBT","SSI","STB","TCB","VCI","VHM","VIC","VRE","VNM","VPB","VJC","HDB","MBB","ACB","BID","CTG","VCB","VIB","TPB","MSB","OCB","EIB","SHB","LPB","HAG","HNG","GVR","SAB","BHN","SAB","VHC","ANV","CMG","VGI","MSN","MWG","FPT","REE","GMD","DGC","DCM","DPM","HAH","VSC","PVT","PVD","GAS","PLX","POW","NT2","REE","PC1","HDG","GEG","GEX","VGC","HT1","BCC","BWE","TDM","CTD","HBC","CTF","CRE","DXG","DXS","KDH","NLG","PDR","NVL","VHM","VIC","VRE","KBC","GVR","BCM","TCH","HHS","HAG","HNG","VCI","SSI","HCM","VND","SHS","MBS","BVS","FPT","CMG","CTR","VGI","VTP","QNS","SAB","BHN","SAB","SJS","SJS","TCH","VCG","VCS","VGC","VIB","ACB",
+  "AAA","ABS","ADS","AGG","APG","APH","ASP","BAF","BCG","BFC","BMC","BMI","BMP","BSI","CMX","CRC","CSV","CTI","DAD","DBD","DCL","DHG","DPG","DRC","EVF","FCM","HNG","IJC","KSB","KPF","LGL","MST","NAB","NCT","NTC","OGC","PIT","POM","QCG","SCS","SEB","SFC","SGN","SGT","SHA","SMB","SPP","SRC","SRF","STK","TGG","THG","TIX","TLG","TMS","TNA","TNG","TRA","VCA","VDS","VFG","VID","VIX","VNG","VNL","VNS","VPH","VRC","VSC","VSH","VTB","YEG","BAB","NVB","VBB","ABB","KLB","NAB","VAB","PGB","SGB","VBB","BVB","NAB","VAB"
+];
+ // de-duplicate and keep order
+for(let i=VH_UNIVERSE_FULL.length-1;i>=0;i--){ if(VH_UNIVERSE_FULL.indexOf(VH_UNIVERSE_FULL[i])!==i) VH_UNIVERSE_FULL.splice(i,1); }
+function getActiveUniverse(){
+  const sel=document.getElementById("vhUniverseSel");
+  const customWrap=document.getElementById("vhCustomWrap");
+  const customInput=document.getElementById("vhCustomInput");
+  const val=sel? sel.value : "50";
+  if(val==="custom"){
+    if(customInput){
+      const raw=customInput.value||"";
+      const toks=raw.split(/[\s,;]+/).map(s=>s.trim().toUpperCase()).filter(s=>/^[A-Z0-9]{3,5}$/.test(s));
+      if(toks.length) return [...new Set(toks)];
+    }
+    return VH_UNIVERSE.slice();
+  }
+  if(val==="all") return VH_UNIVERSE_FULL.slice();
+  const n=parseInt(val,10);
+  if(!isNaN(n)){
+    if(n<=VH_UNIVERSE.length) return VH_UNIVERSE.slice(0,n);
+    return VH_UNIVERSE_FULL.slice(0, Math.min(n, VH_UNIVERSE_FULL.length));
+  }
+  return VH_UNIVERSE.slice();
+}
+function updateUniverseBadge(){
+  const badge=document.getElementById("vhUniverseBadge");
+  const note=document.getElementById("vhUniverseNote");
+  const active=getActiveUniverse();
+  if(badge) badge.textContent=active.length+" stocks";
+  if(note) note.textContent=active.length+" tickers selected — will scan with concurrency "+VH_CONCURRENCY;
+  const wrap=document.getElementById("vhCustomWrap");
+  const sel=document.getElementById("vhUniverseSel");
+  if(wrap&&sel) wrap.classList.toggle("hidden", sel.value!=="custom");
+}
 
 const COMPANY_NAMES = {
   TPB: "Tien Phong Commercial Joint Stock Bank (TPBank)",
@@ -3985,7 +4043,8 @@ async function mapWithConcurrency(items, fn, limit){
 /* ================= Value Hunting — Rendering & State ================= */
 var vhState = {
   stocks: [], filtered: [], sortBy: "score", failed: [],
-  filters: { cagrMin: 0.10, roicMin: 0.15, deMax: 0.50, niche: "key-player", valuation: "any", consistency: "any" }
+  filters: { cagrMin: 0.10, roicMin: 0.15, deMax: 0.50, niche: "key-player", valuation: "any", consistency: "any" },
+  page: 1, pageSize: 10
 };
 function vhSetLoading(on){
   const el=document.getElementById("vhLoading");
@@ -4080,7 +4139,7 @@ function renderVhTopCandidates(){
       '</div>'+
       '<div class="vh-top-why" title="'+why.replace(/"/g,'&quot;')+'">'+why+'</div>'+
       (flags.length?'<div class="vh-top-flags">'+flags.slice(0,2).join("<br>")+'</div>':'<div class="vh-top-flags"></div>')+
-      '<button class="vh-btn-view" data-vh-ticker="'+s.ticker+'">View Stock →</button>'+
+      '<button class="vh-btn-view" data-vh-ticker="'+s.ticker+'">Find Stock →</button>'+
     '</div>';
   }).join("");
   grid.querySelectorAll("[data-vh-ticker]").forEach(btn=>{
@@ -4090,6 +4149,7 @@ function renderVhTopCandidates(){
 function renderVhTable(){
   const wrap=document.getElementById("vhTableWrap");
   const badge=document.getElementById("vhCountBadge");
+  const pag=document.getElementById("vhPagination");
   if(!wrap) return;
   if(badge) badge.textContent=vhState.filtered.length+" stocks";
   const note=document.getElementById("vhFilterNote");
@@ -4101,13 +4161,22 @@ function renderVhTable(){
   }
   if(!vhState.filtered.length){
     wrap.innerHTML='<div class="vh-empty">No stocks match the current filters.<br><span style="font-size:12px">Try adjusting the filters above or click Reset Filters.</span></div>';
+    if(pag) pag.innerHTML="";
     return;
   }
+  const total=vhState.filtered.length;
+  const pageSize=vhState.pageSize||10;
+  const totalPages=Math.max(1, Math.ceil(total/pageSize));
+  if(vhState.page>totalPages) vhState.page=totalPages;
+  if(vhState.page<1) vhState.page=1;
+  const start=(vhState.page-1)*pageSize;
+  const end=Math.min(start+pageSize, total);
+  const pageItems=vhState.filtered.slice(start,end);
   let html='<table class="vh-table"><thead><tr>'+
     '<th data-sort="ticker">Ticker</th><th>Company</th>'+
     '<th data-sort="cagr">EPS CAGR</th><th>Consist.</th><th data-sort="roic">5Y Avg ROIC/ROE</th><th data-sort="de">D/E</th><th>Niche</th><th>Valuation</th><th data-sort="score">Score</th><th>Status</th>'+
   '</tr></thead><tbody>';
-  for(const s of vhState.filtered){
+  for(const s of pageItems){
     const cagrTxt=s.cagr!=null?(s.cagr*100).toFixed(1)+"%":"N/A";
     const cagrTone=s.cagrStatus.tone==="green"?"var(--green)":s.cagrStatus.tone==="amber"?"var(--amber)":"var(--red)";
     const roicTxt=s.avgRoic5Y!=null?(s.avgRoic5Y*100).toFixed(1)+"%":"N/A";
@@ -4143,9 +4212,37 @@ function renderVhTable(){
     th.addEventListener("click", ()=>{
       const map={ ticker:"ticker", cagr:"cagr", roic:"roic", de:"de", score:"score" };
       const k=map[th.dataset.sort];
-      if(k) { vhState.sortBy=k; applyVhFilters(); renderVhTopCandidates(); renderVhTable(); syncVhSortSelect(); }
+      if(k) { vhState.sortBy=k; vhState.page=1; applyVhFilters(); renderVhTopCandidates(); renderVhTable(); syncVhSortSelect(); }
     });
   });
+  renderVhPagination(total, start, end, totalPages);
+}
+function renderVhPagination(total, start, end, totalPages){
+  const pag=document.getElementById("vhPagination");
+  if(!pag) return;
+  if(total<=vhState.pageSize){ pag.innerHTML=""; return; }
+  const curr=vhState.page;
+  let html='<div class="vh-pagination-info">Showing '+(start+1)+'-'+end+' of '+total+' &nbsp;·&nbsp; Page '+curr+'/'+totalPages+'</div>';
+  html+='<div class="vh-pagination-controls">';
+  html+='<button class="vh-page-btn" '+(curr<=1?'disabled':'')+' data-page="'+(curr-1)+'">‹ Prev</button>';
+  const pages=[];
+  for(let i=1;i<=totalPages;i++){
+    if(i===1||i===totalPages||(i>=curr-1&&i<=curr+1)){ pages.push(i); }
+    else if(pages[pages.length-1]!=='…'){ pages.push('…'); }
+  }
+  for(const p of pages){
+    if(p==='…'){ html+='<span style="padding:0 4px;color:var(--muted)">…</span>'; continue; }
+    html+='<button class="vh-page-btn '+(p===curr?'active':'')+'" data-page="'+p+'">'+p+'</button>';
+  }
+  html+='<button class="vh-page-btn" '+(curr>=totalPages?'disabled':'')+' data-page="'+(curr+1)+'">Next ›</button>';
+  html+='</div>';
+  html+='<label class="vh-page-size">Rows <select id="vhPageSizeSel"><option value="10" '+(vhState.pageSize===10?'selected':'')+'>10</option><option value="20" '+(vhState.pageSize===20?'selected':'')+'>20</option><option value="50" '+(vhState.pageSize===50?'selected':'')+'>50</option></select></label>';
+  pag.innerHTML=html;
+  pag.querySelectorAll("[data-page]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{ const p=parseInt(btn.dataset.page,10); if(!isNaN(p)) { vhState.page=p; renderVhTable(); window.scrollTo({top: document.getElementById("vhPagination").offsetTop - 80, behavior:"smooth"}); } });
+  });
+  const sel=pag.querySelector("#vhPageSizeSel");
+  if(sel) sel.addEventListener("change", ()=>{ vhState.pageSize=parseInt(sel.value,10)||10; vhState.page=1; renderVhTable(); });
 }
 function syncVhSortSelect(){
   const sel=document.getElementById("vhSortBy");
@@ -4158,10 +4255,20 @@ function renderValueHunting(){
   renderVhTable();
 }
 function openStockFromVH(ticker){
-  // Switch to dashboard tab and load ticker
+  // Redirect to Dashboard, fill ticker and trigger Analyze (non-blocking)
   switchMainTab("dashboard");
-  document.getElementById("tickerInput").value=ticker;
-  setMode("stock");
+  const input = document.getElementById("tickerInput");
+  state.mode = "stock";
+  state.lastStockTicker = ticker;
+  if(input){
+    input.disabled = false;
+    input.classList.remove("disabled");
+    input.value = ticker;
+    input.focus();
+  }
+  document.getElementById("modeStock").classList.add("active");
+  document.getElementById("modeIndex").classList.remove("active");
+  // Trigger analyze as if user clicked Analyze button
   analyze();
   window.scrollTo({ top:0, behavior:"smooth" });
 }
@@ -4189,10 +4296,13 @@ async function getVhLightData(ticker){
     return data;
   });
 }
-async function runValueHuntingScreen(){
-  // already loaded?
-  if(vhState.stocks.length>0 && Date.now()-vhStats.start < VH_CACHE_TTL) { renderValueHunting(); return; }
-  vhStats={ total: VH_UNIVERSE.length, cacheHits:0, cacheMisses:0, apiRequests:0, start: Date.now() };
+async function runValueHuntingScreen(force){
+  const active=getActiveUniverse();
+  const activeKey=active.join(',');
+  updateUniverseBadge();
+  if(!force && vhState.stocks.length>0 && vhState._lastUniverseKey===activeKey && Date.now()-vhStats.start < VH_CACHE_TTL) { renderValueHunting(); return; }
+  vhStats={ total: active.length, cacheHits:0, cacheMisses:0, apiRequests:0, start: Date.now() };
+  vhState._lastUniverseKey=activeKey;
   renderVhCriteria();
   renderVhSkeleton();
   const progWrap=document.getElementById("vhProgressWrap");
@@ -4200,7 +4310,7 @@ async function runValueHuntingScreen(){
   const progText=document.getElementById("vhProgressText");
   if(progWrap) progWrap.classList.remove("hidden");
   let done=0;
-  const total=VH_UNIVERSE.length;
+  const total=active.length;
   function updateProgress(){
     const pct=Math.round(done/total*100);
     if(progFill) progFill.style.width=pct+"%";
@@ -4210,7 +4320,7 @@ async function runValueHuntingScreen(){
   try{
     const results=[];
     const failed=[];
-    const batchResults=await mapWithConcurrency(VH_UNIVERSE, async function(ticker){
+    const batchResults=await mapWithConcurrency(active, async function(ticker){
       try{
         const data=await getVhLightData(ticker);
         if(!data||!data.historical||!data.historical.length){ failed.push(ticker); return null; }
@@ -4248,6 +4358,7 @@ function initValueHuntingControls(){
     if(!el) return;
     el.addEventListener("change", ()=>{
       vhState.filters[key]=parse(el.value);
+      vhState.page=1;
       vhDebouncedRender();
     });
   };
@@ -4258,11 +4369,11 @@ function initValueHuntingControls(){
   bind("vhFilterVal","valuation", v=>v);
   bind("vhFilterCons","consistency", v=>v);
   const sortEl=document.getElementById("vhSortBy");
-  if(sortEl) sortEl.addEventListener("change", ()=>{ vhState.sortBy=sortEl.value; vhDebouncedRender(); });
+  if(sortEl) sortEl.addEventListener("change", ()=>{ vhState.sortBy=sortEl.value; vhState.page=1; vhDebouncedRender(); });
   const resetBtn=document.getElementById("vhResetBtn");
   if(resetBtn) resetBtn.addEventListener("click", ()=>{
     vhState.filters={ cagrMin:0.10, roicMin:0.15, deMax:0.50, niche:"key-player", valuation:"any", consistency:"any" };
-    vhState.sortBy="score";
+    vhState.sortBy="score"; vhState.page=1;
     document.getElementById("vhFilterCagr").value="0.10";
     const roicEl=document.getElementById("vhFilterRoic"); if(roicEl) roicEl.value="0.15";
     document.getElementById("vhFilterDe").value="0.50";
@@ -4272,10 +4383,32 @@ function initValueHuntingControls(){
     document.getElementById("vhSortBy").value="score";
     renderValueHunting();
   });
+  updateUniverseBadge();
+  const uniSel=document.getElementById("vhUniverseSel");
+  const rescanBtn=document.getElementById("vhRescanBtn");
+  const customInput=document.getElementById("vhCustomInput");
+  if(uniSel){
+    uniSel.addEventListener("change", ()=>{
+      updateUniverseBadge();
+      // clear previous results so next scan uses new universe
+      // don't auto-scan, let user click Scan
+      const note=document.getElementById("vhUniverseNote");
+      if(note) note.textContent="Selected "+getActiveUniverse().length+" tickers — click Scan Universe to analyze.";
+    });
+  }
+  if(rescanBtn){
+    rescanBtn.addEventListener("click", ()=>{
+      vhState.stocks=[]; vhState.filtered=[]; vhState.page=1;
+      runValueHuntingScreen(true);
+    });
+  }
+  if(customInput){
+    customInput.addEventListener("input", ()=>{ updateUniverseBadge(); });
+  }
   const tabD=document.getElementById("tabDashboard");
   const tabV=document.getElementById("tabValueHunting");
   if(tabD) tabD.addEventListener("click", ()=>switchMainTab("dashboard"));
-  if(tabV) tabV.addEventListener("click", ()=>switchMainTab("valueHunting"));
+  if(tabV) tabV.addEventListener("click", ()=>{ updateUniverseBadge(); switchMainTab("valueHunting"); });
 }
 
 /* -------------------- App state & flow -------------------- */
