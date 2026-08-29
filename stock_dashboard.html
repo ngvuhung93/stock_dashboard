@@ -789,10 +789,10 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
       <div class="vh-criteria-hero">
         <div class="vh-criteria-group">
           <div class="vh-criteria-group-label">Non-Bank</div>
-          <div class="vh-criteria-pills">
-            <span class="vh-pill"><span class="vh-pill-check">✓</span> EPS CAGR &gt;10%</span>
-            <span class="vh-pill"><span class="vh-pill-check">✓</span> ROIC ≥15% <span style="color:var(--muted);font-weight:500">5Y avg</span></span>
-            <span class="vh-pill"><span class="vh-pill-check">✓</span> D/E &lt;50%</span>
+<div class="vh-criteria-pills">
+            <span class="vh-pill"><span class="vh-pill-check">✓</span> EPS CAGR >10%</span>
+            <span class="vh-pill"><span class="vh-pill-check">✓</span> ROIC ≥12% <span style="color:var(--muted);font-weight:500">5Y avg</span></span>
+            <span class="vh-pill"><span class="vh-pill-check">✓</span> D/E <50%</span>
             <span class="vh-pill"><span class="vh-pill-check">✓</span> Key Player</span>
           </div>
         </div>
@@ -842,10 +842,9 @@ footer { text-align: center; font-size: 12px; color: var(--muted); padding: 6px 
       <div class="section-title">Filters</div>
       <div class="vh-filters" id="vhFilters">
         <div class="vh-filter-group"><label>5Y EPS CAGR</label><select id="vhFilterCagr"><option value="0">Any</option><option value="0.05">&gt; 5%</option><option value="0.08">&gt; 8%</option><option value="0.10" selected>&gt; 10%</option><option value="0.12">&gt; 12%</option><option value="0.15">&gt; 15%</option><option value="0.20">&gt; 20%</option></select></div>
-        <div class="vh-filter-group"><label>5Y Avg ROIC/ROE</label><select id="vhFilterRoic"><option value="0">Any</option><option value="0.12">&ge; 12%</option><option value="0.15" selected>&ge; 15%</option><option value="0.18">&ge; 18%</option><option value="0.20">&ge; 20%</option></select></div>
-        <div class="vh-filter-group"><label>D/E (non-bank)</label><select id="vhFilterDe"><option value="999">Any</option><option value="0.30">&lt; 30%</option><option value="0.40">&lt; 40%</option><option value="0.50" selected>&lt; 50%</option><option value="0.60">&lt; 60%</option><option value="0.75">&lt; 75%</option></select></div>
-        <div class="vh-filter-group"><label>Niche Business</label><select id="vhFilterNiche"><option value="any">Any</option><option value="key-player" selected>Key Player</option><option value="strong">Strong Position+</option></select></div>
-        <div class="vh-filter-group"><label>Valuation</label><select id="vhFilterVal"><option value="any" selected>Any</option><option value="cheap">Cheap</option><option value="fair">Fair or cheaper</option></select></div>
+<div class="vh-filter-group"><label>5Y Avg ROIC/ROE</label><select id="vhFilterRoic"><option value="0">Any</option><option value="0.12" selected>&ge; 12%</option><option value="0.15">&ge; 15%</option><option value="0.18">&ge; 18%</option><option value="0.20">&ge; 20%</option></select></div>
+        <div class="vh-filter-group"><label>Niche Business</label><select id="vhFilterNiche"><option value="any" selected>Any</option><option value="key-player">Key Player</option><option value="strong">Strong Position+</option></select></div>
+        <div class="vh-filter-group"><label>Valuation</label><select id="vhFilterVal"><option value="any">Any</option><option value="cheap" selected>Cheap</option><option value="fair">Fair or cheaper</option></select></div>
         <div class="vh-filter-group"><label>EPS Consistency</label><select id="vhFilterCons"><option value="any" selected>Any</option><option value="5">5/5</option><option value="4">4+/5</option><option value="3">3+/5</option></select></div>
         <div class="vh-filter-group"><label>Sort By</label><select id="vhSortBy"><option value="score" selected>Score ↓</option><option value="cagr">EPS CAGR ↓</option><option value="roic">ROIC/ROE ↓</option><option value="de">D/E ↑</option><option value="pe">P/E ↑</option><option value="pb">P/B ↑</option></select></div>
         <button class="vh-btn-reset" id="vhResetBtn" type="button">Reset Filters</button>
@@ -4043,7 +4042,7 @@ async function mapWithConcurrency(items, fn, limit){
 /* ================= Value Hunting — Rendering & State ================= */
 var vhState = {
   stocks: [], filtered: [], sortBy: "score", failed: [],
-  filters: { cagrMin: 0.10, roicMin: 0.15, deMax: 0.50, niche: "key-player", valuation: "any", consistency: "any" },
+  filters: { cagrMin: 0.10, roicMin: 0.12, deMax: 0.50, niche: "any", valuation: "cheap", consistency: "any" },
   page: 1, pageSize: 10
 };
 function vhSetLoading(on){
@@ -4055,10 +4054,10 @@ function renderVhCriteria(){
   const box=document.getElementById("vhCriteriaBox");
   if(!box) return;
   box.innerHTML=
-    '<div class="vh-crit-card pass"><div class="vh-crit-label">5Y EPS CAGR</div><div class="vh-crit-value">&gt; 10%</div><div class="vh-crit-note">Sustained earnings growth</div></div>'+
-    '<div class="vh-crit-card pass"><div class="vh-crit-label">5Y Avg ROIC / ROE</div><div class="vh-crit-value">&ge; 15%</div><div class="vh-crit-note">Quality 5Y avg — non-bank ROIC, bank ROE</div></div>'+
-    '<div class="vh-crit-card pass"><div class="vh-crit-label">Debt / Equity</div><div class="vh-crit-value">&lt; 50%</div><div class="vh-crit-note">Non-bank only — banks use ROE</div></div>'+
-    '<div class="vh-crit-card pass"><div class="vh-crit-label">Niche Business</div><div class="vh-crit-value">🟢 Key Player</div><div class="vh-crit-note">Qualitative assessment <span class="vh-tooltip-box"><span class="vh-niche-tip">?</span><span class="vh-tip">Niche classification is a qualitative assessment and should be verified through company reports, industry data and competitive analysis.</span></span></div></div>';
+    '<div class="vh-crit-card pass"><div class="vh-crit-label">5Y EPS CAGR</div><div class="vh-crit-value">> 10%</div><div class="vh-crit-note">Sustained earnings growth</div></div>'+
+    '<div class="vh-crit-card pass"><div class="vh-crit-label">5Y Avg ROIC / ROE</div><div class="vh-crit-value">&ge; 12%</div><div class="vh-crit-note">Quality 5Y avg — non-bank ROIC, bank ROE</div></div>'+
+    '<div class="vh-crit-card pass"><div class="vh-crit-label">Debt / Equity</div><div class="vh-crit-value">< 50%</div><div class="vh-crit-note">Non-bank only — banks use ROE</div></div>'+
+    '<div class="vh-crit-card pass"><div class="vh-crit-label">Niche Business</div><div class="vh-crit-value">Any</div><div class="vh-crit-note">Qualitative assessment <span class="vh-tooltip-box"><span class="vh-niche-tip">?</span><span class="vh-tip">Niche classification is a qualitative assessment and should be verified through company reports, industry data and competitive analysis.</span></span></div></div>';
 }
 function applyVhFilters(){
   const f=vhState.filters;
@@ -4372,13 +4371,13 @@ function initValueHuntingControls(){
   if(sortEl) sortEl.addEventListener("change", ()=>{ vhState.sortBy=sortEl.value; vhState.page=1; vhDebouncedRender(); });
   const resetBtn=document.getElementById("vhResetBtn");
   if(resetBtn) resetBtn.addEventListener("click", ()=>{
-    vhState.filters={ cagrMin:0.10, roicMin:0.15, deMax:0.50, niche:"key-player", valuation:"any", consistency:"any" };
+    vhState.filters={ cagrMin:0.10, roicMin:0.12, deMax:0.50, niche:"any", valuation:"cheap", consistency:"any" };
     vhState.sortBy="score"; vhState.page=1;
     document.getElementById("vhFilterCagr").value="0.10";
-    const roicEl=document.getElementById("vhFilterRoic"); if(roicEl) roicEl.value="0.15";
+    const roicEl=document.getElementById("vhFilterRoic"); if(roicEl) roicEl.value="0.12";
     document.getElementById("vhFilterDe").value="0.50";
-    document.getElementById("vhFilterNiche").value="key-player";
-    document.getElementById("vhFilterVal").value="any";
+    document.getElementById("vhFilterNiche").value="any";
+    document.getElementById("vhFilterVal").value="cheap";
     document.getElementById("vhFilterCons").value="any";
     document.getElementById("vhSortBy").value="score";
     renderValueHunting();
