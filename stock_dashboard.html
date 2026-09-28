@@ -2505,6 +2505,53 @@ function deriveStandaloneCumulative(qRows, key) {
   return out;
 }
 
+/* Some issuers (e.g. condensed-layout reporters such as PPH) publish the
+   SHORT cash-flow statement for QUARTERLY periods: cafef then exposes only
+   HDKD_1..9 and HDDT_10..18 and never the summary lines HDKD_20 (OCF),
+   HDDT_22 (capex) or HDDT_28 (dividends received). Without a fallback those
+   lookups return undefined and every quarterly row is silently dropped, so
+   the quarterly panels/charts render empty. Verified equivalences in the
+   condensed layout:
+     HDKD_9  = net cash from operating activities (= sum of HDKD_1..8)
+     HDDT_13 = purchases of fixed assets (capex, reported negative)
+   Associates/JV dividends have NO condensed equivalent (HDDT_28 is absent),
+   so the fallback deliberately yields 0 rather than inventing a number. */
+const CF_CONDENSED_FALLBACK = {
+  HDKD_20: "HDKD_9",   // operating cash flow
+  HDDT_22: "HDDT_13",  // capex
+  HDDT_28: null        // dividends received: not reported in the short form
+};
+/* Series for `code`, transparently falling back to the condensed layout. */
+function collectCfCodeSeries(value, code) {
+  const primary = collectCodeSeries(value, null, code);
+  if (primary.length) return primary;
+  const alt = CF_CONDENSED_FALLBACK[code];
+  return alt ? collectCodeSeries(value, null, alt) : [];
+}
+
+/* cafef sometimes reports a whole fiscal year as exactly 0 across every
+   cash-flow line when it holds no data for that period (observed for PPH
+   2023, where OCF, capex and dividends are all 0 while 2022/2024/2025 hold
+   real values). Those years are DATA GAPS, not genuine zero-cash-flow years,
+   so they must be dropped exactly like an all-zero income-statement period.
+   Otherwise Adjusted FCF is plotted as 0 and drags the average/median down. */
+function dropAllZeroYears(series) {
+  const byYear = new Map();
+  for (const r of series) {
+    if (!byYear.has(r.year)) byYear.set(r.year, []);
+    byYear.get(r.year).push(r.value);
+  }
+  const gapped = new Set();
+  for (const [year, vals] of byYear) {
+    if (vals.length && vals.every((v) => v === 0)) gapped.add(year);
+  }
+  return series.filter((r) => !gapped.has(r.year));
+}
+/* Combined cash-flow view per year: drops gapped years, then maps to year. */
+function cashFlowYearMap(value, code) {
+  return seriesToMap(dropAllZeroYears(collectCfCodeSeries(value, code)));
+}
+
 function buildCorporateFundamentals(bsAn, isAn, cfAn, bsQ, isQ, cfQ, includeInOcf) {
   const incOcf = includeInOcf === true;
   const cash = seriesToMap(collectCodeSeries(bsAn, "TN", "110"));
@@ -2512,9 +2559,9 @@ function buildCorporateFundamentals(bsAn, isAn, cfAn, bsQ, isQ, cfQ, includeInOc
   const stB = seriesToMap(collectCodeSeries(bsAn, "NV", "320"));
   const ltB = seriesToMap(collectCodeSeries(bsAn, "NV", "338"));
   const isRows = collectFlatSeries(isAn, ["30", "50", "51", "52"]);
-  const ocfMap = seriesToMap(collectCodeSeries(cfAn, null, "HDKD_20"));
-  const capexMap = seriesToMap(collectCodeSeries(cfAn, null, "HDDT_22"));
-  const divMap = seriesToMap(collectCodeSeries(cfAn, null, "HDDT_28"));
+  const ocfMap = cashFlowYearMap(cfAn, "HDKD_20");
+  const capexMap = cashFlowYearMap(cfAn, "HDDT_22");
+  const divMap = cashFlowYearMap(cfAn, "HDDT_28");
   const yearly = [];
   for (const r of isRows) {
     const y = r.year;
@@ -2553,13 +2600,17 @@ function buildCorporateFundamentals(bsAn, isAn, cfAn, bsQ, isQ, cfQ, includeInOc
   const qCashByP = new Map(qCash.map((r) => [periodLabel(r.quarter, r.year), r.value]));
   const qIsRows = collectFlatSeries(isQ, ["30", "50", "51", "52"])
     .filter((r) => !isPeriodMissing(r, ["30", "50"]));
-  const qOcfStandalone = deriveStandaloneCumulative(collectCodeSeries(cfQ, null, "HDKD_20").map(function (r) {
+  /* Quarterly: drop all-zero cash-flow periods BEFORE differencing. A zeroed
+     cumulative period would otherwise poison the following quarter's
+     standalone value (next - 0). */
+  const qCfSeries = (code) => dropAllZeroYears(collectCfCodeSeries(cfQ, code));
+  const qOcfStandalone = deriveStandaloneCumulative(qCfSeries("HDKD_20").map(function (r) {
     return { year: r.year, quarter: r.quarter, period: periodLabel(r.quarter, r.year), HDKD_20: r.value };
   }), "HDKD_20");
-  const qCapexStandalone = deriveStandaloneCumulative(collectCodeSeries(cfQ, null, "HDDT_22").map(function (r) {
+  const qCapexStandalone = deriveStandaloneCumulative(qCfSeries("HDDT_22").map(function (r) {
     return { year: r.year, quarter: r.quarter, period: periodLabel(r.quarter, r.year), HDDT_22: r.value };
   }), "HDDT_22");
-  const qDivStandalone = deriveStandaloneCumulative(collectCodeSeries(cfQ, null, "HDDT_28").map(function (r) {
+  const qDivStandalone = deriveStandaloneCumulative(qCfSeries("HDDT_28").map(function (r) {
     return { year: r.year, quarter: r.quarter, period: periodLabel(r.quarter, r.year), HDDT_28: r.value };
   }), "HDDT_28");
   const quarterly = [];

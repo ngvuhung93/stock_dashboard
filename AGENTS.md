@@ -2,7 +2,7 @@
 
 ## What this repo is
 
-- The entire deliverable is `stock_dashboard.html`: a single-file Vietnam stock dashboard (valuation, dividends, fundamentals). No build system, no package.json, no in-repo tests, no CI.
+- The entire deliverable is `stock_dashboard.html`: a single-file Vietnam stock dashboard (valuation, dividends, fundamentals) **plus a "Value Hunting" screening tab**. No build system, no package.json, no in-repo tests, no CI.
 - Rename history: created as `index.html`, user-renamed to `pepb_dashboard.html`, then to `stock_dashboard.html`. Old harness/test files in `%TEMP%` may reference the old names.
 - Scope: works for individual stocks AND index tickers (`INDEX_TICKERS`: VNINDEX, VN30, HNXINDEX, ...). The dashboard adapts by sector: banks (detected via `BANK_TICKERS` set fallback) get ROE/NIM/NPL/leverage charts and must NOT show ROIC/FCF/OCF/D/E/Capex/P-AFCF; non-banks get the reverse set (ROIC, Adjusted FCF, OCF, Capex, D/E plus the P/Adjusted FCF valuation metric/chart; no NIM/NPL). All fundamental charts share ONE Quarterly/Yearly toggle (default Yearly); it also drives the P/Adjusted-FCF series.
 - All app code lives in ONE inline `<script>` block (the other `<script src=...>` is the Chart.js 4.4.1 CDN tag). CSS is inline in `<style>`. File must stay UTF-8 **without BOM**; UI text is Vietnamese — never re-encode or "fix" characters (em-dashes `—` are intentional; mojibake like `Ã` means you broke encoding).
@@ -31,8 +31,24 @@ Node-harness gotchas: append test code INSIDE the same `eval(code + ...)` string
 - cafef v1 endpoints are intermittently very slow (504s, >30s hangs). `fetchCafefReport` has a 15s timeout + 3 attempts with backoff, and statements are fetched with `Promise.allSettled` so one flaky endpoint doesn't kill the rest (cash flow and quarterly data are optional/partial-tolerant). Do NOT regress this to plain `Promise.all`.
 - Never fabricate live values. If a feed fails, degrade gracefully (`fundUnavailable` message, demo fallback labeled via `isDemo`/`fallbackReason`/demo badge). `USE_LIVE_DATA = false` forces the synthetic mock provider.
 - cafef zero-fills the parent profit line (26) for older periods → bank ROE falls back to line 21 and drops rows where both are 0. Don't "simplify" this away.
+- cafef param is `TypeTime` with a **capital T**; lowercase `typeTime` returns HTTP 500 and looks like "no data for this ticker" — a false negative seen twice.
+- cafef reports some issuers in a **condensed (short-form) cash-flow layout** where the summary lines are absent: only `HDKD_1..9` / `HDDT_10..18`, no `HDKD_20` / `HDDT_22` / `HDDT_28` (verified on PPH quarterly, while its annual file is full-layout). `collectCfCodeSeries` falls back to `HDKD_9` (net operating CF) and `HDDT_13` (capex, negative); associate/JV dividends have **no** condensed equivalent, so they stay 0 rather than being invented. Without this fallback every quarterly row is dropped and the quarterly panels render empty.
+- cafef can report an entire fiscal year as exactly 0 on all three cash-flow lines (PPH 2023, adjacent years are real). That is a data gap, not a zero-cash-flow year: `dropAllZeroYears` removes it before use, mirroring the income-statement `isPeriodMissing` guard. Applied per-year (annual) and per-quarter before cumulative→standalone differencing.
 - Cash flow lines (cafef): HDKD_20 = OCF, HDDT_22 = capex, HDDT_28 = "interest, dividends and profit received". Associate/JV dividends come from HDDT_28 and are treated as NOT already in OCF (per-ticker override: `ASSOCIATE_DIVS_IN_OCF_OVERRIDES`), so Adjusted FCF = OCF − Capex + that amount — never double-count.
 - Dividend history must keep cash dividends and stock dividends strictly separate (never convert stock % into VND or count it as cash).
+
+## Value Hunting tab (screening subsystem)
+
+- Second tab (`#tabValueHunting` / `#valueHuntingView`) toggled by `setTab`; it screens a whole universe instead of one ticker. It shares the VNDirect/cafef layer, so it is subject to every rate-limit and data-gap quirk listed above.
+- Universe: `VH_UNIVERSE` (curated 50) and `VH_UNIVERSE_FULL` (~200, de-duplicated at load). `getActiveUniverse()` honours `#vhUniverseSel` (count / `all` / `custom` textarea). Default is the 50-stock list — do not reorder it casually, the curated order is the recommended shortlist.
+- Scanning is concurrent: `VH_CONCURRENCY = 6` requests in flight. Keep it low; cafef already returns 504s and the browser rate-limits when pushed.
+- Default filter state is set in code at startup: CAGR `0.10`, ROIC `0.12`, D/E `0.50`, niche `any`, valuation `cheap`, consistency `any`. These are the "value hunting" defaults the user chose — change only when asked.
+- `NICHE_CLASSIFICATION` is hand-curated qualitative data (`key-player` passes the niche filter; unclassified = `unknown` = does not pass). Only 12 tickers are classified; adding one is an editorial decision, not a code fix.
+
+## Known risk: synthesized ROIC/ROE (do not treat as real data)
+
+- `deriveRoicHistory` builds a 5-year ROIC/ROE series for the scanner from a **hash of the ticker string** when no fundamentals exist (`roicOverrides` / `roeOverrides` tables, else a hash-derived base). Real fundamentals are used when present.
+- Those values drive `avgRoic5Y`, the `roicMin` filter, `roicPass` and up to 25 scoring points — and the UI does **not** label them as estimates. This is the one place the app contradicts its own "never fabricate" rule; treat any ROIC-based ranking as indicative only, and prefer fixing disclosure before trusting the output.
 
 ## Domain logic invariants
 
